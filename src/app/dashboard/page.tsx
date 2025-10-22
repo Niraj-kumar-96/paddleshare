@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { useCollection, useFirestore, useUser } from "@/firebase";
@@ -10,40 +9,6 @@ import { collection, query, where } from "firebase/firestore";
 import { useMemoFirebase } from "@/firebase/provider";
 import { Ride } from "@/types/ride";
 import { Booking } from "@/types/booking";
-
-function RideList({ rides }: { rides: Ride[] | null }) {
-    if (!rides || rides.length === 0) {
-        return <p>No rides found.</p>;
-    }
-    return (
-        <ul>
-            {rides.map(ride => (
-                <li key={ride.id} className="border-b py-2">
-                    <p className="font-semibold">{ride.origin} to {ride.destination}</p>
-                    <p className="text-sm text-muted-foreground">
-                        {new Date(ride.departureTime).toLocaleString()}
-                    </p>
-                </li>
-            ))}
-        </ul>
-    );
-}
-
-function BookingList({ bookings }: { bookings: Booking[] | null }) {
-    if (!bookings || bookings.length === 0) {
-        return <p>No bookings found.</p>;
-    }
-    return (
-        <ul>
-            {bookings.map(booking => (
-                <li key={booking.id} className="border-b py-2">
-                    <p>Booking for ride {booking.rideId}</p>
-                    <p className="text-sm text-muted-foreground">Seats: {booking.numberOfSeats}</p>
-                </li>
-            ))}
-        </ul>
-    );
-}
 
 export default function DashboardPage() {
     const { user } = useUser();
@@ -63,6 +28,8 @@ export default function DashboardPage() {
     const { data: passengerBookings } = useCollection<Booking>(passengerBookingsQuery);
 
     const totalEarnings = useMemoFirebase(() => {
+        // This is a placeholder calculation. In a real app, you'd likely want to
+        // sum fares from completed rides where bookings were confirmed.
         return driverRides?.reduce((acc, ride) => acc + ride.fare, 0) || 0;
     }, [driverRides]);
     
@@ -112,32 +79,56 @@ export default function DashboardPage() {
                 </Card>
             </div>
 
-            <Tabs defaultValue="as-driver">
-                <TabsList>
-                    <TabsTrigger value="as-driver">My Offered Rides</TabsTrigger>
-                    <TabsTrigger value="as-passenger">My Booked Trips</TabsTrigger>
-                </TabsList>
-                <TabsContent value="as-driver">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Upcoming Rides You're Driving</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <RideList rides={driverRides} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="as-passenger">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Upcoming Trips You've Booked</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                             <BookingList bookings={passengerBookings} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+            <div className="grid gap-6 md:grid-cols-2">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>My Offered Rides</CardTitle>
+                        <CardDescription>Rides you are currently offering.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {driverRides && driverRides.length > 0 ? (
+                            <ul className="space-y-4">
+                                {driverRides.slice(0, 5).map(ride => (
+                                    <li key={ride.id} className="border-b pb-2">
+                                        <p className="font-semibold">{ride.origin} to {ride.destination}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {new Date(ride.departureTime).toLocaleString()}
+                                        </p>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p>You have not offered any rides yet.</p>
+                        )}
+                        <Button variant="outline" asChild className="mt-4">
+                            <Link href="/dashboard/rides">View All My Rides</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>My Booked Trips</CardTitle>
+                        <CardDescription>Your upcoming trips as a passenger.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {passengerBookings && passengerBookings.length > 0 ? (
+                             <ul className="space-y-4">
+                                {passengerBookings.slice(0, 5).map(booking => (
+                                    <li key={booking.id} className="border-b pb-2">
+                                        <p className="font-semibold">Booking for ride ID: {booking.rideId.substring(0,6)}...</p>
+                                        <p className="text-sm text-muted-foreground">Seats: {booking.numberOfSeats}</p>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p>You have not booked any trips yet.</p>
+                        )}
+                         <Button variant="outline" asChild className="mt-4">
+                            <Link href="/dashboard/bookings">View All My Bookings</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }
