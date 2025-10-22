@@ -10,7 +10,7 @@ import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
-import { collection, doc, query, where, Query } from "firebase/firestore";
+import { collection, doc, query, Query } from "firebase/firestore";
 import { Ride } from "@/types/ride";
 import { User } from "@/types/user";
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -34,7 +34,7 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
 
     const { data: driver, isLoading: isLoadingDriver } = useDoc<User>(driverRef);
 
-    const rideImage = PlaceHolderImages[Math.floor(Math.random() * 4)];
+    const rideImage = PlaceHolderImages[index % 4];
 
     const handleBooking = () => {
         if (!user) {
@@ -165,22 +165,15 @@ function SearchPageComponent() {
     const ridesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         
-        let q: Query<Ride> = collection(firestore, "rides") as Query<Ride>;
-
+        let q: Query = collection(firestore, "rides");
+        
         // This is not perfect full-text search, but it's a good start for Firestore.
         // For true full-text search, an external service like Algolia or Typesense is recommended.
         // We are filtering here to show the concept, but Firestore doesn't support partial string matches efficiently.
         // A real implementation might use `==` or `>=` and `<` for prefix matching if the data is structured for it.
         // For this demo, we fetch all and filter client-side, which is NOT scalable.
-        // The following lines are commented out as they would require specific data structuring and indexes.
-        // if (from) {
-        //     q = query(q, where("origin", ">=", from), where("origin", "<=", from + '\uf8ff'));
-        // }
-        // if (to) {
-        //     q = query(q, where("destination", ">=", to), where("destination", "<=", to + '\uf8ff'));
-        // }
         
-        return q;
+        return q as Query<Ride>;
     }, [firestore]);
 
     const { data: allRides, isLoading } = useCollection<Ride>(ridesQuery);
@@ -253,11 +246,6 @@ function SearchPageComponent() {
     );
 }
 
-// React's Suspense for data fetching is best used with a framework like Relay or Next.js's upcoming features.
-// Since we are using a client-side hook (`useCollection`), we handle loading state explicitly inside the component.
-// Therefore, the top-level Suspense wrapper is not needed here.
 export default function SearchPage() {
     return <SearchPageComponent />
 }
-
-    
