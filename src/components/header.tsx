@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -85,7 +86,6 @@ export default function Header() {
 
     return (
         <div className="hidden md:flex items-center gap-2">
-            <ThemeToggle />
             <Button asChild>
               <Link href="/login">Log In</Link>
             </Button>
@@ -104,13 +104,10 @@ export default function Header() {
       )}
     >
       <div className="container flex h-16 items-center">
-        <div className="flex items-center">
+        <div className="mr-4 hidden md:flex">
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <Logo />
           </Link>
-        </div>
-
-        <div className="hidden md:flex flex-1 items-center justify-center">
           <nav className="flex items-center space-x-6 text-sm font-medium">
             {navLinks.map((link) => (
               <Link
@@ -127,8 +124,7 @@ export default function Header() {
           </nav>
         </div>
 
-        <div className="flex flex-1 items-center justify-end space-x-2">
-           <div className="md:hidden">
+        <div className="md:hidden">
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -166,14 +162,18 @@ export default function Header() {
                 </div>}
               </SheetContent>
             </Sheet>
-          </div>
-          
-          <div className="flex items-center gap-2">
+        </div>
+        
+        <div className="flex flex-1 items-center justify-between md:justify-end">
             <div className="md:hidden">
-                <ThemeToggle />
+                <Link href="/" className="flex items-center space-x-2">
+                  <Logo />
+                </Link>
             </div>
-            <UserMenu />
-          </div>
+            <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <UserMenu />
+            </div>
         </div>
       </div>
     </header>
