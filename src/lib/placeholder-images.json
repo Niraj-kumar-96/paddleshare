@@ -1,3 +1,64 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero",
+      "description": "A futuristic car driving on an open road at dusk, with glowing lines indicating data and speed.",
+      "imageUrl": "https://images.unsplash.com/photo-1759926953901-468ce451805a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxmdXR1cmlzdGljJTIwY2FyJTIwcm9hZHxlbnwwfHx8fDE3NjExMTMzNzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "futuristic car road"
+    },
+    {
+      "id": "ride1",
+      "description": "View of the Boston skyline from across the water.",
+      "imageUrl": "https://images.unsplash.com/photo-1688489442858-58f7e4c234e0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxCb3N0b24lMjBza3lsaW5lfGVufDB8fHx8MTc2MTExMzM3Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "Boston skyline"
+    },
+    {
+      "id": "ride2",
+      "description": "The Golden Gate Bridge in San Francisco.",
+      "imageUrl": "https://images.unsplash.com/photo-1719858403364-83f7442a197e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxHb2xkZW4lMjBHYXRlfGVufDB8fHx8MTc2MTExMzM3M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "Golden Gate"
+    },
+    {
+      "id": "ride3",
+      "description": "The Chicago skyline with the 'Bean' sculpture.",
+      "imageUrl": "https://images.unsplash.com/photo-1553663359-503567f5f529?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Q2hpY2FnbyUyMHNreWxpbmV8ZW58MHx8fHwxNzYxMTEzMzcyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "Chicago skyline"
+    },
+    {
+      "id": "ride4",
+      "description": "A bustling street in downtown Houston.",
+      "imageUrl": "https://images.unsplash.com/photo-1675906798404-957ea5c0f9c1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxIb3VzdG9uJTIwc3RyZWV0fGVufDB8fHx8MTc2MTExMzM3M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "Houston street"
+    },
+    {
+      "id": "avatar1",
+      "description": "Portrait of a smiling young woman.",
+      "imageUrl": "https://images.unsplash.com/photo-1592621385612-4d7129426394?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx3b21hbiUyMHNtaWxpbmd8ZW58MHx8fHwxNzYxMDMyOTIyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman smiling"
+    },
+    {
+      "id": "avatar2",
+      "description": "Portrait of a man with a beard.",
+      "imageUrl": "https://images.unsplash.com/photo-1672761431773-ae6e2d054493?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtYW4lMjBiZWFyZHxlbnwwfHx8fDE3NjEwOTAyNDR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man beard"
+    },
+    {
+      "id": "avatar3",
+      "description": "Portrait of a person with glasses.",
+      "imageUrl": "https://images.unsplash.com/photo-1586344153246-973c5d0d1141?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxwZXJzb24lMjBnbGFzc2VzfGVufDB8fHx8MTc2MTA2NjczMHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person glasses"
+    },
+    {
+      "id": "auth-bg",
+      "description": "Abstract glowing blue and purple gradient background.",
+      "imageUrl": "https://images.unsplash.com/photo-1604079628040-94301bb21b91?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGdyYWRpZW50fGVufDB8fHx8MTc2MTEwMTUwN3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract gradient"
+    },
+    {
+      "id": "about-hero",
+      "description": "Diverse group of people collaborating around a globe.",
+      "imageUrl": "https://images.unsplash.com/photo-1605428942583-451ce8d00091?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwZW9wbGUlMjBnbG9iZXxlbnwwfHx8fDE3NjExMTMzNzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "people globe"
+    }
+  ]
 }
