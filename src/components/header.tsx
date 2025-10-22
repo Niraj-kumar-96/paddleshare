@@ -5,7 +5,7 @@ import { Car, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
 import { useState, useEffect } from "react";
@@ -23,6 +23,7 @@ const navLinks = [
 
 export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, isUserLoading } = useUser();
   const auth = getAuth();
@@ -36,7 +37,9 @@ export default function Header() {
   }, []);
 
   const handleLogout = () => {
-    signOut(auth);
+    signOut(auth).then(() => {
+      router.push('/login');
+    });
   };
 
   const UserMenu = () => {

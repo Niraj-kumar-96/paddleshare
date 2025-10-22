@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/firebase/provider";
 import { useEffect } from "react";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { doc, serverTimestamp } from "firebase/firestore";
+import { doc, serverTimestamp, getDoc } from "firebase/firestore";
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Name is required." }),
@@ -49,25 +49,30 @@ export default function SignupPage() {
     },
   });
   
-  const handleUserCreation = (userCred: UserCredential) => {
+  const handleUserCreation = async (userCred: UserCredential) => {
     const loggedInUser = userCred.user;
     if(firestore) {
         const userDocRef = doc(firestore, 'users', loggedInUser.uid);
-        const name = form.getValues("name") || loggedInUser.displayName;
-        
-        // Update profile for email/password sign up
-        if (loggedInUser.displayName !== name) {
-            updateProfile(loggedInUser, { displayName: name });
-        }
+        const userDoc = await getDoc(userDocRef);
 
-        setDocumentNonBlocking(userDocRef, {
-            id: loggedInUser.uid,
-            displayName: name,
-            email: loggedInUser.email,
-            photoURL: loggedInUser.photoURL,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-        }, { merge: true });
+        // Only create user doc if it's a new user
+        if (!userDoc.exists()) {
+            const name = form.getValues("name") || loggedInUser.displayName;
+            
+            // Update profile for email/password sign up
+            if (loggedInUser.displayName !== name) {
+                await updateProfile(loggedInUser, { displayName: name });
+            }
+
+            setDocumentNonBlocking(userDocRef, {
+                id: loggedInUser.uid,
+                displayName: name,
+                email: loggedInUser.email,
+                photoURL: loggedInUser.photoURL,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        }
     }
      router.push("/dashboard");
   }
@@ -76,7 +81,7 @@ export default function SignupPage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-        handleUserCreation(userCredential);
+        await handleUserCreation(userCredential);
     } catch (error) {
         console.error("Email/password sign-up error", error);
     }
@@ -86,7 +91,7 @@ export default function SignupPage() {
     const provider = new GoogleAuthProvider();
     try {
       const userCredential = await signInWithPopup(auth, provider);
-      handleUserCreation(userCredential);
+      await handleUserCreation(userCredential);
     } catch (error) {
       console.error("Google sign-in error", error);
     }
