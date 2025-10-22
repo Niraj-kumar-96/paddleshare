@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Search } from 'lucide-react';
@@ -102,8 +103,7 @@ export default function Home() {
                 transition={{ duration: 0.5, delay: 0.6 }}
               >
                 <form action="/search" className="mt-8 max-w-2xl mx-auto">
-                  <Card>
-                    <CardContent className="p-2">
+                    <div className="p-2 rounded-lg bg-background/80 backdrop-blur-sm">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 items-center">
                         <div className="lg:col-span-2">
                            <Input name="from" placeholder="Leaving from" className="h-12 text-base"/>
@@ -116,8 +116,7 @@ export default function Home() {
                           Find a ride
                         </Button>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
                 </form>
               </MotionDiv>
             </div>
@@ -274,3 +273,5 @@ function UsersIcon(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+    
