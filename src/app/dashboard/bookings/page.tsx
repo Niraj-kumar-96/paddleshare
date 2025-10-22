@@ -4,24 +4,49 @@
 import { useCollection, useFirestore, useUser } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
 import { Booking } from "@/types/booking";
-import { collection, query, where } from "firebase/firestore";
-import { Card, CardContent } from "@/components/ui/card";
+import { collection, query, where, doc, getDocs } from "firebase/firestore";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Ride } from "@/types/ride";
 import { useDoc } from "@/firebase/firestore/use-doc";
-import { doc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Star } from "lucide-react";
+import { Review } from "@/types/review";
+import { useEffect, useState } from "react";
 
 function BookingItem({ booking }: { booking: Booking }) {
     const firestore = useFirestore();
+    const [hasReviewed, setHasReviewed] = useState(true);
+    const { user } = useUser();
+
     const rideRef = useMemoFirebase(() => {
         if (!firestore) return null;
         return doc(firestore, "rides", booking.rideId);
     }, [firestore, booking.rideId]);
 
     const { data: ride, isLoading } = useDoc<Ride>(rideRef);
+
+    useEffect(() => {
+        const checkReview = async () => {
+            if (!firestore || !user || !ride) return;
+            
+            const reviewsQuery = query(
+                collection(firestore, "reviews"),
+                where("rideId", "==", ride.id),
+                where("reviewerId", "==", user.uid)
+            );
+            const reviewSnapshot = await getDocs(reviewsQuery);
+            setHasReviewed(!reviewSnapshot.empty);
+        };
+        
+        if(ride && user) {
+            checkReview();
+        }
+
+    }, [firestore, user, ride, booking.id]);
+
+    const isRidePast = ride ? new Date(ride.departureTime) < new Date() : false;
 
     return (
         <Card className="bg-card/80 flex flex-col">
@@ -50,14 +75,22 @@ function BookingItem({ booking }: { booking: Booking }) {
                 )}
             </CardContent>
              {ride && (
-                <div className="p-4 border-t">
+                <CardFooter className="p-4 border-t flex flex-col gap-2">
                      <Button asChild className="w-full">
                         <Link href={`/dashboard/bookings/${booking.id}`}>
                             <MessageSquare className="mr-2 h-4 w-4" />
                             View Chat
                         </Link>
                     </Button>
-                </div>
+                    {isRidePast && !hasReviewed && (
+                         <Button asChild variant="outline" className="w-full">
+                            <Link href={`/dashboard/review/${booking.id}`}>
+                                <Star className="mr-2 h-4 w-4" />
+                                Leave a Review
+                            </Link>
+                        </Button>
+                    )}
+                </CardFooter>
             )}
         </Card>
     );
@@ -74,6 +107,9 @@ function BookingSkeleton() {
                     <Skeleton className="h-5 w-1/4" />
                 </div>
             </CardContent>
+             <CardFooter className="p-4 border-t">
+                 <Skeleton className="h-10 w-full" />
+             </CardFooter>
         </Card>
     );
 }

@@ -5,21 +5,54 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Calendar, Car, Clock, Users, Search } from "lucide-react";
+import { ArrowRight, Calendar, Car, Clock, Users, Search, Star } from "lucide-react";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
-import { collection, doc, query, Query } from "firebase/firestore";
+import { collection, doc, query, Query, where } from "firebase/firestore";
 import { Ride } from "@/types/ride";
 import { User } from "@/types/user";
+import { Review } from "@/types/review";
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MotionDiv } from "@/components/client/motion-div";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+
+function DriverRating({ driverId }: { driverId: string }) {
+    const firestore = useFirestore();
+
+    const reviewsQuery = useMemoFirebase(() => {
+        if(!firestore || !driverId) return null;
+        return query(collection(firestore, 'reviews'), where('driverId', '==', driverId));
+    }, [firestore, driverId]);
+
+    const { data: reviews, isLoading } = useCollection<Review>(reviewsQuery);
+
+    if (isLoading || !reviews) {
+        return <Skeleton className="h-5 w-20" />;
+    }
+
+    if (reviews.length === 0) {
+        return <span className="text-sm text-muted-foreground">No reviews yet</span>
+    }
+
+    const avgRating = reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length;
+
+    return (
+        <div className="flex items-center gap-1">
+            <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+            <span className="font-semibold">{avgRating.toFixed(1)}</span>
+            <span className="text-sm text-muted-foreground">({reviews.length})</span>
+        </div>
+    )
+}
+
 
 function RideCard({ ride, index }: { ride: Ride, index: number }) {
     const firestore = useFirestore();
@@ -38,7 +71,7 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
 
     const handleBooking = () => {
         if (!user) {
-            router.push('/login');
+            router.push('/login?redirect=/search');
             return;
         }
         if (!firestore) return;
@@ -49,11 +82,11 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
             passengerId: user.uid,
             bookingTime: new Date().toISOString(),
             numberOfSeats: 1, 
-            status: "confirmed",
+            status: "pending",
         }).then(() => {
             toast({
-                title: "Ride Booked!",
-                description: "Your seat has been confirmed.",
+                title: "Booking Requested!",
+                description: "The driver has been notified of your request.",
             });
             router.push("/dashboard/bookings");
         });
@@ -102,18 +135,21 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
                                     <Skeleton className="h-10 w-10 rounded-full" />
                                     <Skeleton className="h-5 w-24" />
                                 </>
-                            ) : (
-                                <>
+                            ) : driver ? (
+                                <Link href={`/profile/${driver.id}`} className="flex items-center gap-2 group">
                                     <Avatar>
                                         <AvatarImage src={driver?.photoURL ?? ""} alt={driver?.displayName ?? ""} />
                                         <AvatarFallback>{driver?.displayName?.charAt(0) ?? 'D'}</AvatarFallback>
                                     </Avatar>
-                                    <span className="font-medium">{driver?.displayName ?? "Driver"}</span>
-                                </>
-                            )}
+                                    <div>
+                                        <span className="font-medium group-hover:underline">{driver?.displayName ?? "Driver"}</span>
+                                        <DriverRating driverId={driver.id} />
+                                    </div>
+                                </Link>
+                            ) : null}
                         </div>
                         {user?.uid !== ride.driverId ? (
-                            <Button onClick={handleBooking}>Book Seat</Button>
+                            <Button onClick={handleBooking}>Request to Book</Button>
                         ) : (
                             <Button disabled>Your Ride</Button>
                         )}
@@ -157,23 +193,20 @@ function RideCardSkeleton() {
 function SearchPageComponent() {
     const firestore = useFirestore();
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     const [from, setFrom] = useState(searchParams.get('from') || '');
     const [to, setTo] = useState(searchParams.get('to') || '');
-    const [date, setDate] = useState('');
+    const [date, setDate] = useState(searchParams.get('date') ||'');
 
     const ridesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         
-        let q: Query = collection(firestore, "rides");
-        
-        // This is not perfect full-text search, but it's a good start for Firestore.
-        // For true full-text search, an external service like Algolia or Typesense is recommended.
-        // We are filtering here to show the concept, but Firestore doesn't support partial string matches efficiently.
-        // A real implementation might use `==` or `>=` and `<` for prefix matching if the data is structured for it.
-        // For this demo, we fetch all and filter client-side, which is NOT scalable.
-        
-        return q as Query<Ride>;
+        // Firestore doesn't support case-insensitive `includes` queries.
+        // For a production app, a search service like Algolia or Typesense would be used.
+        // Here, we fetch all future rides and filter client-side as a demonstration.
+        // This is not scalable.
+        return query(collection(firestore, "rides"), where("departureTime", ">=", new Date().toISOString()));
     }, [firestore]);
 
     const { data: allRides, isLoading } = useCollection<Ride>(ridesQuery);
@@ -185,16 +218,17 @@ function SearchPageComponent() {
             const toMatch = to ? ride.destination.toLowerCase().includes(to.toLowerCase()) : true;
             const dateMatch = date ? new Date(ride.departureTime).toISOString().split('T')[0] === date : true;
             
-            // Ensure ride is in the future
-            const isFutureRide = new Date(ride.departureTime) > new Date();
-
-            return fromMatch && toMatch && dateMatch && isFutureRide;
+            return fromMatch && toMatch && dateMatch;
         });
     }, [allRides, from, to, date]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        // The filtering is already reactive via useMemo, but you could trigger a refetch here if queries were dynamic
+        const params = new URLSearchParams();
+        if (from) params.set('from', from);
+        if (to) params.set('to', to);
+        if (date) params.set('date', date);
+        router.push(`/search?${params.toString()}`);
     }
 
     return (
@@ -247,5 +281,6 @@ function SearchPageComponent() {
 }
 
 export default function SearchPage() {
-    return <SearchPageComponent />
+    // Wrap with React.Suspense to handle query param reading
+    return <React.Suspense><SearchPageComponent /></React.Suspense>
 }
