@@ -30,7 +30,7 @@ const formSchema = z.object({
   departureDate: z.date({
     required_error: "A date of departure is required.",
   }),
-  departureTime: z.string().min(1, "Time is required."),
+  departureTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please use HH:mm format."),
   availableSeats: z.coerce.number().min(1, "At least one seat must be available."),
   fare: z.coerce.number().min(0, "Price must be a positive number."),
   details: z.string().optional(),
@@ -205,7 +205,7 @@ function EditRidePageContent({ params }: { params: { id: string } }) {
                                         <FormItem>
                                             <FormLabel>Time</FormLabel>
                                             <FormControl>
-                                                <Input type="time" {...field} />
+                                                <Input type="text" placeholder="HH:mm" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
