@@ -2,7 +2,7 @@
 "use client";
 
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset } from "@/components/ui/sidebar";
-import { LayoutDashboard, Car, Wallet, Settings, User, LogOut } from "lucide-react";
+import { LayoutDashboard, Car, Wallet, Settings, User, LogOut, Home } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -10,6 +10,7 @@ import { getAuth, signOut } from "firebase/auth";
 import { useUser } from "@/firebase";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SidebarSeparator } from "@/components/ui/sidebar";
 
 const menuItems = [
     { icon: <LayoutDashboard />, label: "Dashboard", href: "/dashboard" },
@@ -38,6 +39,17 @@ export default function DashboardLayout({
                         <Logo />
                     </SidebarHeader>
                     <SidebarContent>
+                        <SidebarMenu>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild tooltip="Home">
+                                    <Link href="/">
+                                        <Home />
+                                        <span>Home</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarMenu>
+                        <SidebarSeparator />
                         <SidebarMenu>
                             {menuItems.map((item) => (
                                 <SidebarMenuItem key={item.label}>
