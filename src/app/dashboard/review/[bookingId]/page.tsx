@@ -75,13 +75,12 @@ function ReviewPageContent() {
             rating: values.rating,
             comment: values.comment,
             createdAt: serverTimestamp(),
-        }).then(() => {
-            toast({
-                title: "Review Submitted",
-                description: "Thank you for your feedback!",
-            });
-            router.push('/dashboard/bookings');
         });
+        toast({
+            title: "Review Submitted",
+            description: "Thank you for your feedback!",
+        });
+        router.push('/dashboard/bookings');
     };
     
     if (isLoadingBooking || isLoadingRide || isUserLoading) {

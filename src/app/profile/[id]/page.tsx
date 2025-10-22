@@ -44,7 +44,7 @@ function ReviewCard({ review }: { review: Review }) {
                 </div>
             </div>
             <p className="text-muted-foreground mt-3">{review.comment}</p>
-            <p className="text-xs text-muted-foreground/70 mt-2">{new Date(review.createdAt).toLocaleDateString()}</p>
+            <p className="text-xs text-muted-foreground/70 mt-2">{review.createdAt ? new Date(review.createdAt.toDate()).toLocaleDateString() : ''}</p>
         </div>
     )
 }
@@ -100,7 +100,7 @@ function ProfilePageContent() {
                 </Avatar>
                 <div>
                     <h1 className="text-3xl font-bold font-headline">{user.displayName}</h1>
-                    <p className="text-muted-foreground">Member since {new Date(user.createdAt).toLocaleDateString()}</p>
+                    <p className="text-muted-foreground">Member since {user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString() : ''}</p>
                     {reviews && reviews.length > 0 && (
                         <div className="flex items-center gap-2 mt-2">
                             <Star className="w-5 h-5 text-amber-400 fill-amber-400" />

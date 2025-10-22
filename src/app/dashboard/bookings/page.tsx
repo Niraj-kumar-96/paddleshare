@@ -45,7 +45,7 @@ function BookingItem({ booking }: { booking: Booking }) {
             checkReview();
         }
 
-    }, [firestore, user, ride, booking.id]);
+    }, [firestore, user, ride]);
 
 
     const isRidePast = ride ? new Date(ride.departureTime) < new Date() : false;

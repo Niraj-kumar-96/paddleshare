@@ -1,4 +1,6 @@
 
+import { Timestamp } from "firebase/firestore";
+
 export type Review = {
     id: string;
     rideId: string;
@@ -6,5 +8,5 @@ export type Review = {
     reviewerId: string;
     rating: number;
     comment: string;
-    createdAt: string;
+    createdAt: Timestamp;
 };
