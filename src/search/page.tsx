@@ -10,7 +10,7 @@ import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
-import { collection, doc, query, Query, where } from "firebase/firestore";
+import { collection, doc, query, Query, where, setDoc, getDoc } from "firebase/firestore";
 import { Ride } from "@/types/ride";
 import { User } from "@/types/user";
 import { Review } from "@/types/review";
@@ -200,6 +200,55 @@ function SearchPageComponent() {
     const [to, setTo] = useState(searchParams.get('to') || '');
     const [date, setDate] = useState(searchParams.get('date') ||'');
 
+    useEffect(() => {
+        const createTestRide = async () => {
+            if (!firestore) return;
+            const testRideRef = doc(firestore, 'rides', 'test-ride-id');
+            const testRideDoc = await getDoc(testRideRef);
+
+            if (!testRideDoc.exists()) {
+                const testDriverId = 'test-driver-id';
+                const testDriverRef = doc(firestore, 'users', testDriverId);
+                const testDriverDoc = await getDoc(testDriverRef);
+
+                if (!testDriverDoc.exists()) {
+                    await setDoc(testDriverRef, {
+                        id: testDriverId,
+                        displayName: 'Test Driver',
+                        email: 'testdriver@example.com',
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    });
+                }
+                
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setHours(10, 0, 0, 0);
+
+                await setDoc(testRideRef, {
+                    id: 'test-ride-id',
+                    driverId: testDriverId,
+                    origin: 'San Francisco, CA',
+                    destination: 'Los Angeles, CA',
+                    departureTime: tomorrow.toISOString(),
+                    availableSeats: 2,
+                    fare: 50,
+                    details: 'This is a test ride to help with development.',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                });
+                console.log("Test ride created!");
+                 // This will trigger a re-fetch in useCollection
+                router.refresh();
+            }
+        };
+
+        if (process.env.NODE_ENV === 'development') {
+            createTestRide();
+        }
+    }, [firestore, router]);
+
+
     const ridesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         
@@ -285,3 +334,5 @@ export default function SearchPage() {
     // Wrap with React.Suspense to handle query param reading
     return <React.Suspense><SearchPageComponent /></React.Suspense>
 }
+
+    
