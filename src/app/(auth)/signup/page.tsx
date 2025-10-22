@@ -11,8 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth, useFirestore } from "@/firebase";
-import { GoogleAuthProvider, signInWithPopup, updateProfile } from "firebase/auth";
-import { initiateEmailSignUp } from "@/firebase/non-blocking-login";
+import { GoogleAuthProvider, signInWithPopup, updateProfile, UserCredential, createUserWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/firebase/provider";
 import { useEffect } from "react";
@@ -49,15 +48,45 @@ export default function SignupPage() {
       password: "",
     },
   });
+  
+  const handleUserCreation = (userCred: UserCredential) => {
+    const loggedInUser = userCred.user;
+    if(firestore) {
+        const userDocRef = doc(firestore, 'users', loggedInUser.uid);
+        const name = form.getValues("name") || loggedInUser.displayName;
+        
+        // Update profile for email/password sign up
+        if (loggedInUser.displayName !== name) {
+            updateProfile(loggedInUser, { displayName: name });
+        }
+
+        setDocumentNonBlocking(userDocRef, {
+            id: loggedInUser.uid,
+            displayName: name,
+            email: loggedInUser.email,
+            photoURL: loggedInUser.photoURL,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        }, { merge: true });
+    }
+     router.push("/dashboard");
+  }
+
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    initiateEmailSignUp(auth, values.email, values.password);
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        handleUserCreation(userCredential);
+    } catch (error) {
+        console.error("Email/password sign-up error", error);
+    }
   };
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const userCredential = await signInWithPopup(auth, provider);
+      handleUserCreation(userCredential);
     } catch (error) {
       console.error("Google sign-in error", error);
     }
@@ -65,26 +94,9 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (user) {
-        if(firestore) {
-            const userDocRef = doc(firestore, 'users', user.uid);
-            const name = form.getValues("name") || user.displayName;
-            setDocumentNonBlocking(userDocRef, {
-                id: user.uid,
-                displayName: name,
-                email: user.email,
-                photoURL: user.photoURL,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
-            }, { merge: true });
-        }
-
-        if(auth.currentUser && form.getValues("name")) {
-            updateProfile(auth.currentUser, { displayName: form.getValues("name") });
-        }
-
-        router.push("/dashboard");
+      router.push("/dashboard");
     }
-  }, [user, router, firestore, auth, form]);
+  }, [user, router]);
 
 
   return (

@@ -11,8 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from "@/firebase";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { initiateEmailSignIn } from "@/firebase/non-blocking-login";
+import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/firebase/provider";
 import { useEffect } from "react";
@@ -46,7 +45,7 @@ export default function LoginPage() {
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    initiateEmailSignIn(auth, values.email, values.password);
+    signInWithEmailAndPassword(auth, values.email, values.password);
   };
   
   const handleGoogleSignIn = async () => {
