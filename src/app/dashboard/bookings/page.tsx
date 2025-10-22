@@ -4,22 +4,24 @@
 import { useCollection, useFirestore, useUser } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
 import { Booking } from "@/types/booking";
-import { collection, query, where, doc, getDocs, orderBy } from "firebase/firestore";
+import { collection, query, where, doc, getDocs, orderBy, deleteDoc } from "firebase/firestore";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Ride } from "@/types/ride";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { MessageSquare, Star, CreditCard } from "lucide-react";
+import { MessageSquare, Star, CreditCard, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 
 function BookingItem({ booking }: { booking: Booking }) {
     const firestore = useFirestore();
     const [hasReviewed, setHasReviewed] = useState(true);
     const { user } = useUser();
+    const { toast } = useToast();
 
     const rideRef = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -50,6 +52,19 @@ function BookingItem({ booking }: { booking: Booking }) {
 
     const isRidePast = ride ? new Date(ride.departureTime) < new Date() : false;
 
+    const handleCancelRequest = async () => {
+        if (!firestore) return;
+        const confirmation = confirm("Are you sure you want to cancel this booking request?");
+        if (confirmation) {
+            const bookingRef = doc(firestore, "bookings", booking.id);
+            await deleteDoc(bookingRef);
+            toast({
+                title: "Request Cancelled",
+                description: "Your booking request has been successfully cancelled.",
+            });
+        }
+    };
+
     return (
         <Card className="bg-card/80 flex flex-col">
             <CardContent className="p-4 flex-1">
@@ -79,9 +94,15 @@ function BookingItem({ booking }: { booking: Booking }) {
                     </div>
                 )}
             </CardContent>
-             {ride && booking.status === 'confirmed' && (
+             {ride && (
                 <CardFooter className="p-4 border-t flex flex-col gap-2">
-                     {booking.paymentStatus === 'pending' && !isRidePast && (
+                    {booking.status === 'pending' && !isRidePast && (
+                        <Button variant="destructive" className="w-full" onClick={handleCancelRequest}>
+                            <XCircle className="mr-2 h-4 w-4" />
+                            Cancel Request
+                        </Button>
+                    )}
+                     {booking.status === 'confirmed' && booking.paymentStatus === 'pending' && !isRidePast && (
                         <Button asChild className="w-full">
                             <Link href={`/dashboard/checkout/${booking.id}`}>
                                 <CreditCard className="mr-2 h-4 w-4" />
@@ -89,7 +110,7 @@ function BookingItem({ booking }: { booking: Booking }) {
                             </Link>
                         </Button>
                      )}
-                     {booking.paymentStatus === 'paid' && (
+                     {booking.status === 'confirmed' && booking.paymentStatus === 'paid' && (
                         <>
                              <Button asChild className="w-full">
                                 <Link href={`/dashboard/bookings/${booking.id}`}>
