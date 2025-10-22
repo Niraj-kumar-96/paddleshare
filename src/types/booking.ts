@@ -1,3 +1,4 @@
+
 export type Booking = {
     id: string;
     rideId: string;
@@ -5,4 +6,5 @@ export type Booking = {
     bookingTime: string;
     numberOfSeats: number;
     status: 'pending' | 'confirmed' | 'cancelled' | 'declined';
+    paymentStatus: 'pending' | 'paid' | 'refunded';
 };

@@ -11,14 +11,18 @@ import { useDoc } from "@/firebase/firestore/use-doc";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { MessageSquare, Star } from "lucide-react";
+import { MessageSquare, Star, CreditCard } from "lucide-react";
 import { Review } from "@/types/review";
 import { useEffect, useState } from "react";
+import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 function BookingItem({ booking }: { booking: Booking }) {
     const firestore = useFirestore();
     const [hasReviewed, setHasReviewed] = useState(true);
     const { user } = useUser();
+    const { toast } = useToast();
 
     const rideRef = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -46,6 +50,16 @@ function BookingItem({ booking }: { booking: Booking }) {
 
     }, [firestore, user, ride, booking.id]);
 
+    const handlePayment = () => {
+        if (!firestore) return;
+        const bookingRef = doc(firestore, 'bookings', booking.id);
+        updateDocumentNonBlocking(bookingRef, { paymentStatus: 'paid' });
+        toast({
+            title: "Payment Successful",
+            description: "Your seat is confirmed. Ready for the trip!",
+        });
+    }
+
     const isRidePast = ride ? new Date(ride.departureTime) < new Date() : false;
 
     return (
@@ -63,33 +77,46 @@ function BookingItem({ booking }: { booking: Booking }) {
                 )}
                 {ride && (
                     <div>
-                        <p className="font-bold text-lg">{ride.origin} to {ride.destination}</p>
+                        <div className="flex justify-between items-start">
+                            <p className="font-bold text-lg">{ride.origin} to {ride.destination}</p>
+                             <Badge variant={booking.status === 'confirmed' ? 'default' : booking.status === 'declined' ? 'destructive' : 'secondary'} className="capitalize">{booking.status}</Badge>
+                        </div>
                         <p className="text-muted-foreground text-sm">
                             On: {new Date(ride.departureTime).toLocaleDateString()} at {new Date(ride.departureTime).toLocaleTimeString()}
                         </p>
                         <div className="flex justify-between items-center mt-2">
                             <p>Seats Booked: <span className="font-semibold">{booking.numberOfSeats}</span></p>
-                            <p className="capitalize">Status: <span className="font-semibold">{booking.status}</span></p>
+                            <p className="font-semibold">${ride.fare * booking.numberOfSeats}</p>
                         </div>
                     </div>
                 )}
             </CardContent>
              {ride && booking.status === 'confirmed' && (
                 <CardFooter className="p-4 border-t flex flex-col gap-2">
-                     <Button asChild className="w-full">
-                        <Link href={`/dashboard/bookings/${booking.id}`}>
-                            <MessageSquare className="mr-2 h-4 w-4" />
-                            View Chat
-                        </Link>
-                    </Button>
-                    {isRidePast && !hasReviewed && (
-                         <Button asChild variant="outline" className="w-full">
-                            <Link href={`/dashboard/review/${booking.id}`}>
-                                <Star className="mr-2 h-4 w-4" />
-                                Leave a Review
-                            </Link>
+                     {booking.paymentStatus === 'pending' && (
+                        <Button onClick={handlePayment} className="w-full">
+                           <CreditCard className="mr-2 h-4 w-4" />
+                           Pay Now
                         </Button>
-                    )}
+                     )}
+                     {booking.paymentStatus === 'paid' && (
+                        <>
+                             <Button asChild className="w-full">
+                                <Link href={`/dashboard/bookings/${booking.id}`}>
+                                    <MessageSquare className="mr-2 h-4 w-4" />
+                                    View Chat
+                                </Link>
+                            </Button>
+                            {isRidePast && !hasReviewed && (
+                                <Button asChild variant="outline" className="w-full">
+                                    <Link href={`/dashboard/review/${booking.id}`}>
+                                        <Star className="mr-2 h-4 w-4" />
+                                        Leave a Review
+                                    </Link>
+                                </Button>
+                            )}
+                        </>
+                     )}
                 </CardFooter>
             )}
         </Card>
@@ -128,7 +155,7 @@ export default function BookingsPage() {
 
     return (
         <div>
-            <h1 className="text-3xl font-headline font-bold mb-2">My Bookings</h1>
+            <h1 className="text-3xl font-headline font-bold mb-2">My Trips</h1>
             <p className="text-muted-foreground mb-8">All the trips you have booked as a passenger.</p>
 
             {isLoading && (

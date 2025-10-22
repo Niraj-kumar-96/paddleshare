@@ -18,6 +18,8 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { CreditCard } from "lucide-react";
+import React from 'react';
 
 function BookingRequestCard({ booking }: { booking: Booking }) {
     const firestore = useFirestore();
@@ -58,16 +60,30 @@ function BookingRequestCard({ booking }: { booking: Booking }) {
 
     return (
         <div className="flex items-center justify-between p-4 border rounded-lg bg-background">
-            <Link href={`/profile/${passenger.id}`} className="flex items-center gap-4 group">
-                <Avatar>
-                    <AvatarImage src={passenger.photoURL} alt={passenger.displayName} />
-                    <AvatarFallback>{passenger.displayName.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="group-hover:underline">
-                    <p className="font-semibold">{passenger.displayName}</p>
-                    <p className="text-sm text-muted-foreground">{booking.numberOfSeats} seat(s) requested</p>
-                </div>
-            </Link>
+            <div className="flex-1">
+                <Link href={`/profile/${passenger.id}`} className="flex items-center gap-4 group">
+                    <Avatar>
+                        <AvatarImage src={passenger.photoURL} alt={passenger.displayName} />
+                        <AvatarFallback>{passenger.displayName.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="group-hover:underline">
+                        <p className="font-semibold">{passenger.displayName}</p>
+                        <p className="text-sm text-muted-foreground">{booking.numberOfSeats} seat(s) requested</p>
+                    </div>
+                </Link>
+                {booking.status === 'confirmed' && (
+                    <div className="flex items-center gap-2 mt-2 text-sm">
+                        <CreditCard className="w-4 h-4 text-muted-foreground" />
+                        <span className={cn(
+                            "font-medium",
+                            booking.paymentStatus === 'paid' ? 'text-green-600' : 'text-amber-600'
+                        )}>
+                            Payment {booking.paymentStatus}
+                        </span>
+                    </div>
+                )}
+            </div>
+
             {booking.status === 'pending' && (
                 <div className="flex gap-2">
                     <Button size="sm" onClick={() => handleUpdateStatus('confirmed')}>Approve</Button>
@@ -99,8 +115,8 @@ function ManageRidePageContent() {
     }, [firestore, rideId]);
     const { data: bookings, isLoading: isLoadingBookings } = useCollection<Booking>(bookingsQuery);
 
-    const pendingBookings = useMemo(() => bookings?.filter(b => b.status === 'pending') || [], [bookings]);
-    const otherBookings = useMemo(() => bookings?.filter(b => b.status !== 'pending') || [], [bookings]);
+    const pendingBookings = React.useMemo(() => bookings?.filter(b => b.status === 'pending') || [], [bookings]);
+    const otherBookings = React.useMemo(() => bookings?.filter(b => b.status !== 'pending') || [], [bookings]);
 
     const isLoading = isUserLoading || isLoadingRide || isLoadingBookings;
 
