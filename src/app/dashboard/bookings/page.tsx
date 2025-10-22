@@ -12,19 +12,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { MessageSquare, Star, CreditCard, Loader } from "lucide-react";
-import { Review } from "@/types/review";
 import { useEffect, useState } from "react";
-import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { createPaymentIntent } from "@/ai/flows/create-payment-intent";
+import { useRouter } from "next/navigation";
+
 
 function BookingItem({ booking }: { booking: Booking }) {
     const firestore = useFirestore();
     const [hasReviewed, setHasReviewed] = useState(true);
     const { user } = useUser();
-    const { toast } = useToast();
-    const [isPaying, setIsPaying] = useState(false);
+    const router = useRouter();
 
     const rideRef = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -52,39 +49,6 @@ function BookingItem({ booking }: { booking: Booking }) {
 
     }, [firestore, user, ride, booking.id]);
 
-    const handlePayment = async () => {
-        if (!ride || isPaying) return;
-        setIsPaying(true);
-        try {
-            const paymentAmount = ride.fare * booking.numberOfSeats;
-            const { clientSecret } = await createPaymentIntent({
-                bookingId: booking.id,
-                amount: paymentAmount,
-            });
-
-            // TODO: Here you would redirect to a checkout page
-            // For now, we'll simulate the payment and update the status
-            console.log("Created Payment Intent with client secret:", clientSecret);
-
-            if (!firestore) return;
-            const bookingRef = doc(firestore, 'bookings', booking.id);
-            updateDocumentNonBlocking(bookingRef, { paymentStatus: 'paid' });
-            toast({
-                title: "Payment Successful",
-                description: "Your seat is confirmed. Ready for the trip!",
-            });
-
-        } catch(error: any) {
-            console.error("Payment failed", error);
-            toast({
-                variant: "destructive",
-                title: "Payment Failed",
-                description: error.message || "Could not process payment.",
-            });
-        } finally {
-            setIsPaying(false);
-        }
-    }
 
     const isRidePast = ride ? new Date(ride.departureTime) < new Date() : false;
 
@@ -120,9 +84,11 @@ function BookingItem({ booking }: { booking: Booking }) {
              {ride && booking.status === 'confirmed' && (
                 <CardFooter className="p-4 border-t flex flex-col gap-2">
                      {booking.paymentStatus === 'pending' && (
-                        <Button onClick={handlePayment} className="w-full" disabled={isPaying}>
-                           {isPaying ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
-                           {isPaying ? "Processing..." : "Pay Now"}
+                        <Button asChild className="w-full">
+                            <Link href={`/dashboard/checkout/${booking.id}`}>
+                                <CreditCard className="mr-2 h-4 w-4" />
+                                Pay Now
+                            </Link>
                         </Button>
                      )}
                      {booking.paymentStatus === 'paid' && (
