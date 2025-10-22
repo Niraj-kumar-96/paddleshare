@@ -10,7 +10,7 @@ import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
-import { collection, doc, query, Query, where, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, query, Query, where, getDoc, serverTimestamp } from "firebase/firestore";
 import { Ride } from "@/types/ride";
 import { User } from "@/types/user";
 import { Review } from "@/types/review";
@@ -324,7 +324,5 @@ export default function SearchPage() {
     // Wrap with React.Suspense to handle query param reading
     return <React.Suspense><SearchPageComponent /></React.Suspense>
 }
-
-    
 
     
