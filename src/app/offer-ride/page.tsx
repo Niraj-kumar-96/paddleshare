@@ -1,10 +1,13 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
-export default function OfferRidePage() {
+function OfferRidePageContent() {
     return (
         <div className="container py-12 md:py-24 flex justify-center">
             <Card className="w-full max-w-3xl bg-card/60 backdrop-blur-sm border-border/20 shadow-2xl shadow-primary/10">
@@ -66,4 +69,13 @@ export default function OfferRidePage() {
             </Card>
         </div>
     );
+}
+
+
+export default function OfferRidePage() {
+    return (
+        <ProtectedRoute>
+            <OfferRidePageContent />
+        </ProtectedRoute>
+    )
 }
