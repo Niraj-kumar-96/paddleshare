@@ -11,7 +11,7 @@ import { useDoc } from "@/firebase/firestore/use-doc";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { MessageSquare, Star, CreditCard, Loader } from "lucide-react";
+import { MessageSquare, Star, CreditCard } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 
@@ -74,7 +74,7 @@ function BookingItem({ booking }: { booking: Booking }) {
                         </p>
                         <div className="flex justify-between items-center mt-2">
                             <p>Seats Booked: <span className="font-semibold">{booking.numberOfSeats}</span></p>
-                            <p className="font-semibold">${ride.fare * booking.numberOfSeats}</p>
+                            <p className="font-semibold">${(ride.fare * booking.numberOfSeats).toFixed(2)}</p>
                         </div>
                     </div>
                 )}
@@ -168,3 +168,5 @@ export default function BookingsPage() {
         </div>
     );
 }
+
+    

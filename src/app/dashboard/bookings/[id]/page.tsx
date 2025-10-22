@@ -82,7 +82,8 @@ function ChatPageContent() {
 
     const messagesRef = useMemoFirebase(() => {
         if (!bookingRef || !isUserInvolved) return null;
-        return query(collection(bookingRef, 'messages'), orderBy('timestamp', 'asc'));
+        const messagesCollectionRef = collection(bookingRef, 'messages');
+        return query(messagesCollectionRef, orderBy('timestamp', 'asc'));
     }, [bookingRef, isUserInvolved]);
 
     const { data: messages, isLoading: isLoadingMessages } = useCollection<Message>(messagesRef);
@@ -91,7 +92,9 @@ function ChatPageContent() {
         e.preventDefault();
         if (!newMessage.trim() || !user || !firestore || !isUserInvolved) return;
         
-        addDocumentNonBlocking(collection(firestore, 'bookings', bookingId, 'messages'), {
+        const messagesCollectionRef = collection(firestore, 'bookings', bookingId, 'messages');
+
+        addDocumentNonBlocking(messagesCollectionRef, {
             senderId: user.uid,
             text: newMessage,
             timestamp: serverTimestamp(),
@@ -123,7 +126,7 @@ function ChatPageContent() {
         )
     }
 
-    if (!isUserInvolved) {
+    if (!isUserInvolved && !isLoading) {
         return (
             <div className="container py-12 text-center">
                 <p>You are not authorized to view this chat.</p>
@@ -133,7 +136,7 @@ function ChatPageContent() {
     }
     
     if (!booking || !ride) {
-        return <p>Booking not found.</p>
+        return <div className="container py-12">Booking not found.</div>
     }
 
     if(booking.status !== 'confirmed' || booking.paymentStatus !== 'paid') {
@@ -187,3 +190,5 @@ export default function ChatPage() {
         </ProtectedRoute>
     )
 };
+
+    
