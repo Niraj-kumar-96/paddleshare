@@ -1,0 +1,330 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the PaddleShare platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        },
+        "profilePicture": {
+          "type": "string",
+          "description": "URL to the user's profile picture.",
+          "format": "uri"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The date and time the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email"
+      ]
+    },
+    "Ride": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Ride",
+      "type": "object",
+      "description": "Represents a ride offered on the PaddleShare platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Ride entity."
+        },
+        "driverId": {
+          "type": "string",
+          "description": "Reference to the User offering the ride. (Relationship: User 1:N Ride)"
+        },
+        "origin": {
+          "type": "string",
+          "description": "The starting location of the ride."
+        },
+        "destination": {
+          "type": "string",
+          "description": "The destination location of the ride."
+        },
+        "departureTime": {
+          "type": "string",
+          "description": "The date and time of departure for the ride.",
+          "format": "date-time"
+        },
+        "fare": {
+          "type": "number",
+          "description": "The cost of the ride."
+        },
+        "availableSeats": {
+          "type": "number",
+          "description": "The number of seats available in the ride."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the ride was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The date and time the ride was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "driverId",
+        "origin",
+        "destination",
+        "departureTime",
+        "fare",
+        "availableSeats"
+      ]
+    },
+    "Booking": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Booking",
+      "type": "object",
+      "description": "Represents a booking for a ride on the PaddleShare platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Booking entity."
+        },
+        "rideId": {
+          "type": "string",
+          "description": "Reference to the Ride being booked. (Relationship: Ride 1:N Booking)"
+        },
+        "passengerId": {
+          "type": "string",
+          "description": "Reference to the User booking the ride. (Relationship: User 1:N Booking)"
+        },
+        "bookingTime": {
+          "type": "string",
+          "description": "The date and time the booking was made.",
+          "format": "date-time"
+        },
+        "numberOfSeats": {
+          "type": "number",
+          "description": "The number of seats booked."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the booking (e.g., pending, confirmed, cancelled)."
+        }
+      },
+      "required": [
+        "id",
+        "rideId",
+        "passengerId",
+        "bookingTime",
+        "numberOfSeats",
+        "status"
+      ]
+    },
+    "Review": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Review",
+      "type": "object",
+      "description": "Represents a review of a ride or user on the PaddleShare platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Review entity."
+        },
+        "rideId": {
+          "type": "string",
+          "description": "Reference to the Ride being reviewed. (Relationship: Ride 1:N Review)"
+        },
+        "reviewerId": {
+          "type": "string",
+          "description": "Reference to the User who wrote the review. (Relationship: User 1:N Review)"
+        },
+        "rating": {
+          "type": "number",
+          "description": "The rating given in the review (e.g., 1-5 stars)."
+        },
+        "comment": {
+          "type": "string",
+          "description": "The text comment provided in the review."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the review was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "rideId",
+        "reviewerId",
+        "rating",
+        "comment"
+      ]
+    },
+    "Vehicle": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Vehicle",
+      "type": "object",
+      "description": "Represents a vehicle used for rides on the PaddleShare platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Vehicle entity."
+        },
+        "driverId": {
+          "type": "string",
+          "description": "Reference to the User who owns the vehicle. (Relationship: User 1:N Vehicle)"
+        },
+        "make": {
+          "type": "string",
+          "description": "The make of the vehicle (e.g., Toyota)."
+        },
+        "model": {
+          "type": "string",
+          "description": "The model of the vehicle (e.g., Camry)."
+        },
+        "year": {
+          "type": "number",
+          "description": "The year the vehicle was manufactured."
+        },
+        "licensePlate": {
+          "type": "string",
+          "description": "The license plate number of the vehicle."
+        }
+      },
+      "required": [
+        "id",
+        "driverId",
+        "make",
+        "model",
+        "year",
+        "licensePlate"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information.  userId is the Firebase Authentication UID. Includes standard user profile data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/rides/{rideId}",
+        "definition": {
+          "entityName": "Ride",
+          "schema": {
+            "$ref": "#/backend/entities/Ride"
+          },
+          "description": "Stores ride information offered on the platform. Rides can be offered by authenticated or anonymous users.  The 'driverId' field stores the Firebase UID of the user offering the ride. If the user is anonymous, the UID is generated upon ride creation. Allows listing of all rides without security rule filtering.",
+          "params": [
+            {
+              "name": "rideId",
+              "description": "The unique identifier for the ride."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/rides/{rideId}/bookings/{bookingId}",
+        "definition": {
+          "entityName": "Booking",
+          "schema": {
+            "$ref": "#/backend/entities/Booking"
+          },
+          "description": "Stores booking information for a specific ride. The passengerId field stores the Firebase UID of the user making the booking.",
+          "params": [
+            {
+              "name": "rideId",
+              "description": "The unique identifier for the ride."
+            },
+            {
+              "name": "bookingId",
+              "description": "The unique identifier for the booking."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/rides/{rideId}/reviews/{reviewId}",
+        "definition": {
+          "entityName": "Review",
+          "schema": {
+            "$ref": "#/backend/entities/Review"
+          },
+          "description": "Stores reviews for a specific ride. The reviewerId field stores the Firebase UID of the user writing the review.",
+          "params": [
+            {
+              "name": "rideId",
+              "description": "The unique identifier for the ride."
+            },
+            {
+              "name": "reviewId",
+              "description": "The unique identifier for the review."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/vehicles/{vehicleId}",
+        "definition": {
+          "entityName": "Vehicle",
+          "schema": {
+            "$ref": "#/backend/entities/Vehicle"
+          },
+          "description": "Stores vehicle information for a specific user. Ensures that only the user can access their vehicle information.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the user."
+            },
+            {
+              "name": "vehicleId",
+              "description": "The unique identifier for the vehicle."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure prioritizes authorization independence and clarity, especially given the requirement for users to offer rides without logging in (anonymous authentication).  This is achieved through structural segregation and strategic denormalization, with the 'rides' collection being central to anonymous ride offerings. Anonymous users will have a generated UID upon ride offer, and that UID will be stored on the Ride object, which makes this user the driver of the Ride. Bookings are subcollections of Rides, enabling isolation of the Booking schema and permissions.  User-generated data (Vehicle, Reviews) are stored in user-owned paths. This design avoids `get()` calls in security rules, enabling atomic operations and simpler debugging.  The following collections are structured to allow list operations that don't require filtering via security rules.  This structure ensures that rules are not filters (QAPs), allowing for performant and secure data retrieval."
+  }
+}
