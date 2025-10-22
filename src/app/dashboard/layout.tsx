@@ -2,7 +2,7 @@
 "use client";
 
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset } from "@/components/ui/sidebar";
-import { LayoutDashboard, Car, Wallet, Settings, User, LogOut, Home, Briefcase } from "lucide-react";
+import { LayoutDashboard, Car, Wallet, Settings, User, LogOut, Home, Briefcase, Truck } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -15,6 +15,7 @@ import { SidebarSeparator } from "@/components/ui/sidebar";
 const menuItems = [
     { icon: <LayoutDashboard />, label: "Dashboard", href: "/dashboard" },
     { icon: <Car />, label: "My Rides", href: "/dashboard/rides" },
+    { icon: <Truck />, label: "My Vehicles", href: "/dashboard/vehicles" },
     { icon: <Briefcase />, label: "My Trips", href: "/dashboard/bookings" },
     { icon: <Wallet />, label: "Wallet", href: "/dashboard/wallet" },
     { icon: <User />, label: "Profile", href: "/dashboard/profile" },

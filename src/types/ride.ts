@@ -1,6 +1,7 @@
 export type Ride = {
     id: string;
     driverId: string;
+    vehicleId: string;
     origin: string;
     destination: string;
     departureTime: string;

@@ -1,0 +1,324 @@
+
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the PaddleShare platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The display name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL to the user's profile picture.",
+          "format": "uri"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The date and time the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "displayName",
+        "email"
+      ]
+    },
+    "Ride": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Ride",
+      "type": "object",
+      "description": "Represents a ride offered on the PaddleShare platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Ride entity."
+        },
+        "driverId": {
+          "type": "string",
+          "description": "Reference to the User offering the ride. (Relationship: User 1:N Ride)"
+        },
+        "vehicleId": {
+            "type": "string",
+            "description": "Reference to the Vehicle used for the ride. (Relationship: Vehicle 1:N Ride)"
+        },
+        "origin": {
+          "type": "string",
+          "description": "The starting location of the ride."
+        },
+        "destination": {
+          "type": "string",
+          "description": "The destination location of the ride."
+        },
+        "departureTime": {
+          "type": "string",
+          "description": "The date and time of departure for the ride.",
+          "format": "date-time"
+        },
+        "fare": {
+          "type": "number",
+          "description": "The cost of the ride."
+        },
+        "availableSeats": {
+          "type": "number",
+          "description": "The number of seats available in the ride."
+        },
+        "passengers": {
+          "type": "array",
+          "description": "A list of passenger user IDs who are confirmed for the ride.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "details": {
+          "type": "string",
+          "description": "Optional details about the ride."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the ride was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The date and time the ride was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "driverId",
+        "vehicleId",
+        "origin",
+        "destination",
+        "departureTime",
+        "fare",
+        "availableSeats"
+      ]
+    },
+    "Booking": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Booking",
+      "type": "object",
+      "description": "Represents a booking for a ride on the PaddleShare platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Booking entity."
+        },
+        "rideId": {
+          "type": "string",
+          "description": "Reference to the Ride being booked. (Relationship: Ride 1:N Booking)"
+        },
+        "passengerId": {
+          "type": "string",
+          "description": "Reference to the User booking the ride. (Relationship: User 1:N Booking)"
+        },
+        "bookingTime": {
+          "type": "string",
+          "description": "The date and time the booking was made.",
+          "format": "date-time"
+        },
+        "numberOfSeats": {
+          "type": "number",
+          "description": "The number of seats booked."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the booking (e.g., pending, confirmed, cancelled)."
+        },
+        "paymentStatus": {
+          "type": "string",
+          "description": "The payment status of the booking (e.g., pending, paid, refunded)."
+        }
+      },
+      "required": [
+        "id",
+        "rideId",
+        "passengerId",
+        "bookingTime",
+        "numberOfSeats",
+        "status",
+        "paymentStatus"
+      ]
+    },
+    "Review": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Review",
+      "type": "object",
+      "description": "Represents a review of a ride or user on the PaddleShare platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Review entity."
+        },
+        "rideId": {
+          "type": "string",
+          "description": "Reference to the Ride being reviewed. (Relationship: Ride 1:N Review)"
+        },
+        "reviewerId": {
+          "type": "string",
+          "description": "Reference to the User who wrote the review. (Relationship: User 1:N Review)"
+        },
+        "rating": {
+          "type": "number",
+          "description": "The rating given in the review (e.g., 1-5 stars)."
+        },
+        "comment": {
+          "type": "string",
+          "description": "The text comment provided in the review."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the review was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "rideId",
+        "reviewerId",
+        "rating",
+        "comment"
+      ]
+    },
+    "Vehicle": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Vehicle",
+      "type": "object",
+      "description": "Represents a vehicle used for rides on the PaddleShare platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Vehicle entity."
+        },
+        "driverId": {
+          "type": "string",
+          "description": "Reference to the User who owns the vehicle. (Relationship: User 1:N Vehicle)"
+        },
+        "make": {
+          "type": "string",
+          "description": "The make of the vehicle (e.g., Toyota)."
+        },
+        "model": {
+          "type": "string",
+          "description": "The model of the vehicle (e.g., Camry)."
+        },
+        "year": {
+          "type": "number",
+          "description": "The year the vehicle was manufactured."
+        },
+        "licensePlate": {
+          "type": "string",
+          "description": "The license plate number of the vehicle."
+        }
+      },
+      "required": [
+        "id",
+        "driverId",
+        "make",
+        "model",
+        "year",
+        "licensePlate"
+      ]
+    },
+    "Message": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Message",
+      "type": "object",
+      "description": "Represents a chat message within a booking.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Message entity."
+        },
+        "senderId": {
+          "type": "string",
+          "description": "The ID of the user who sent the message."
+        },
+        "text": {
+          "type": "string",
+          "description": "The content of the message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The time the message was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "senderId",
+        "text",
+        "timestamp"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous",
+      "google.com"
+    ]
+  },
+  "firestore": {
+    "collections": {
+      "users": {
+        "schema": {
+          "$ref": "#/entities/User"
+        },
+        "description": "Stores user profile information. The document ID is the Firebase Authentication UID."
+      },
+      "rides": {
+        "schema": {
+          "$ref": "#/entities/Ride"
+        },
+        "description": "Stores all available rides. Anyone can read, but only authenticated users can create."
+      },
+      "bookings": {
+        "schema": {
+          "$ref": "#/entities/Booking"
+        },
+        "description": "Stores booking information. Authenticated users can create/read their own bookings.",
+        "collections": {
+          "messages": {
+            "schema": {
+              "$ref": "#/entities/Message"
+            },
+            "description": "Stores chat messages for a specific booking. Only the passenger and driver can read/write."
+          }
+        }
+      },
+      "reviews": {
+        "schema": {
+          "$ref": "#/entities/Review"
+        },
+        "description": "Stores reviews for rides."
+      },
+      "vehicles": {
+        "schema": {
+          "$ref": "#/entities/Vehicle"
+        },
+        "description": "Stores vehicle information for users."
+      }
+    }
+  }
+}

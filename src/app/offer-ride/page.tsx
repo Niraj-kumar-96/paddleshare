@@ -10,19 +10,25 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useFirestore, useUser } from "@/firebase";
-import { collection, serverTimestamp } from "firebase/firestore";
+import { useCollection, useFirestore, useUser } from "@/firebase";
+import { collection, serverTimestamp, query, where } from "firebase/firestore";
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { MotionDiv } from "@/components/client/motion-div";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Truck } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
+import { Vehicle } from "@/types/vehicle";
+import { useMemoFirebase } from "@/firebase/provider";
+import Link from "next/link";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const formSchema = z.object({
+  vehicleId: z.string().min(1, "Please select a vehicle."),
   origin: z.string().min(1, "Origin is required."),
   destination: z.string().min(1, "Destination is required."),
   departureDate: z.date({
@@ -40,6 +46,13 @@ function OfferRidePageContent() {
     const { user } = useUser();
     const router = useRouter();
     const { toast } = useToast();
+
+    const vehiclesQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return query(collection(firestore, 'vehicles'), where('driverId', '==', user.uid));
+    }, [user, firestore]);
+
+    const { data: vehicles, isLoading: isLoadingVehicles } = useCollection<Vehicle>(vehiclesQuery);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -64,6 +77,7 @@ function OfferRidePageContent() {
         
         addDocumentNonBlocking(ridesCollection, {
             driverId: user.uid,
+            vehicleId: values.vehicleId,
             origin: values.origin,
             destination: values.destination,
             departureTime: departureTimestamp,
@@ -81,6 +95,23 @@ function OfferRidePageContent() {
             router.push("/dashboard/rides");
         });
     };
+    
+    if (isLoadingVehicles) {
+        return <div className="container py-12"><Skeleton className="h-96 w-full" /></div>
+    }
+
+    if (!vehicles || vehicles.length === 0) {
+        return (
+            <div className="container py-12 text-center">
+                <Truck className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-medium">No Vehicles Found</h3>
+                <p className="mt-2 text-sm text-muted-foreground">You must add a vehicle before you can offer a ride.</p>
+                <Button asChild className="mt-6">
+                    <Link href="/dashboard/vehicles">Add a Vehicle</Link>
+                </Button>
+            </div>
+        )
+    }
 
     return (
         <div className="container py-12 md:py-16">
@@ -100,10 +131,34 @@ function OfferRidePageContent() {
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                         <Card>
                              <CardHeader>
-                                <CardTitle>Route</CardTitle>
-                                <CardDescription>Where are you going?</CardDescription>
+                                <CardTitle>Route & Vehicle</CardTitle>
+                                <CardDescription>Where are you going and which car are you taking?</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
+                                <FormField
+                                    control={form.control}
+                                    name="vehicleId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Vehicle</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select a vehicle for this ride" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {vehicles.map(vehicle => (
+                                                        <SelectItem key={vehicle.id} value={vehicle.id}>
+                                                            {vehicle.year} {vehicle.make} {vehicle.model}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
                                 <FormField
                                     control={form.control}
                                     name="origin"
