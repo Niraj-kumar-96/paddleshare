@@ -2,7 +2,7 @@
 
 import { useCollection, useFirestore, useUser } from "@/firebase";
 import { Booking } from "@/types/booking";
-import { collection, query, where, doc, getDocs, orderBy, deleteDoc } from "firebase/firestore";
+import { collection, query, where, doc, getDocs, orderBy, deleteDoc, updateDoc } from "firebase/firestore";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Ride } from "@/types/ride";
 import { useDoc } from "@/firebase/firestore/use-doc";
@@ -42,8 +42,37 @@ function BookingItem({ booking }: { booking: Booking }) {
 
     }, [firestore, user, ride]);
 
+    const handleCancelBooking = async () => {
+        if (!firestore || !ride) return;
+        const bookingRef = doc(firestore, 'bookings', booking.id);
+        const rideRef = doc(firestore, 'rides', ride.id);
+        
+        try {
+            await updateDoc(bookingRef, { status: 'cancelled' });
+            // This is a simplification. A real app would need a transaction
+            // to ensure this is safe, especially if multiple people cancel at once.
+            if(booking.status === 'confirmed') {
+                 await updateDoc(rideRef, {
+                    availableSeats: ride.availableSeats + booking.numberOfSeats
+                 });
+            }
+            toast({
+                title: "Booking Cancelled",
+                description: "Your booking has been successfully cancelled."
+            });
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Cancellation Failed',
+                description: error.message || "Could not cancel your booking."
+            })
+        }
+    }
+
 
     const isRidePast = ride ? new Date(ride.departureTime) < new Date() : false;
+    const canCancel = !isRidePast && booking.status !== 'cancelled';
+    const totalFare = ride ? (ride.fare * booking.numberOfSeats).toFixed(2) : '0.00';
 
     return (
         <Card className="bg-card/80 flex flex-col">
@@ -62,20 +91,38 @@ function BookingItem({ booking }: { booking: Booking }) {
                     <div>
                         <div className="flex justify-between items-start">
                             <p className="font-bold text-lg">{ride.origin} to {ride.destination}</p>
-                             <Badge variant={booking.status === 'confirmed' ? 'default' : 'destructive'} className="capitalize">{booking.status}</Badge>
+                             <Badge 
+                                variant={booking.status === 'confirmed' ? 'default' : (booking.status === 'cancelled' ? 'secondary' : 'destructive')} 
+                                className="capitalize"
+                            >
+                                {booking.status}
+                            </Badge>
                         </div>
                         <p className="text-muted-foreground text-sm">
                             On: {new Date(ride.departureTime).toLocaleDateString()} at {new Date(ride.departureTime).toLocaleTimeString()}
                         </p>
                         <div className="flex justify-between items-center mt-2">
                             <p>Seats Booked: <span className="font-semibold">{booking.numberOfSeats}</span></p>
-                            <p className="font-semibold">${(ride.fare * booking.numberOfSeats).toFixed(2)}</p>
+                            <p className="font-semibold">${totalFare}</p>
                         </div>
                     </div>
                 )}
             </CardContent>
              {ride && (
                 <CardFooter className="p-4 border-t flex flex-col gap-2">
+                     {booking.status === 'pending' && (
+                        <p className="text-sm text-muted-foreground text-center w-full">Waiting for driver approval...</p>
+                     )}
+
+                     {booking.status === 'confirmed' && booking.paymentStatus === 'pending' && !isRidePast && (
+                        <Button asChild className="w-full">
+                            <Link href={`/dashboard/checkout/${booking.id}`}>
+                                <CreditCard className="mr-2 h-4 w-4" />
+                                Proceed to Payment
+                            </Link>
+                        </Button>
+                     )}
+
                      {booking.status === 'confirmed' && booking.paymentStatus === 'paid' && (
                         <>
                              <Button asChild className="w-full">
@@ -93,6 +140,13 @@ function BookingItem({ booking }: { booking: Booking }) {
                                 </Button>
                             )}
                         </>
+                     )}
+
+                     {canCancel && (
+                        <Button variant="destructive" className="w-full" onClick={handleCancelBooking}>
+                            <XCircle className="mr-2 h-4 w-4" />
+                            Cancel Booking
+                        </Button>
                      )}
                 </CardFooter>
             )}
@@ -122,20 +176,10 @@ function BookingSkeleton() {
 export default function BookingsPage() {
     const { user } = useUser();
     
-    const passengerBookingsQuery = useMemo(() => {
-        if (!user) return null;
-        return {
-            path: "bookings",
-            constraints: [
-                where("passengerId", "==", user.uid), 
-                orderBy("bookingTime", "desc")
-            ]
-        }
-    }, [user]);
-
     const { data: passengerBookings, isLoading } = useCollection<Booking>(
-        passengerBookingsQuery?.path,
-        passengerBookingsQuery?.constraints
+        user ? 'bookings' : null,
+        where("passengerId", "==", user?.uid ?? ' '), 
+        orderBy("bookingTime", "desc")
     );
 
     return (

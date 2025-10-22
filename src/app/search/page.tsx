@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Calendar, Car, Clock, Users, Search, Star, Truck } from "lucide-react";
+import { ArrowRight, Calendar, Clock, Users, Search, Star, Truck } from "lucide-react";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
-import { query, Query, where } from "firebase/firestore";
+import { query, QueryConstraint, where } from "firebase/firestore";
 import { Ride } from "@/types/ride";
 import { User } from "@/types/user";
 import { Review } from "@/types/review";
@@ -20,19 +20,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MotionDiv } from "@/components/client/motion-div";
 import Link from "next/link";
+import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { collection, serverTimestamp } from "firebase/firestore";
 
 function DriverRating({ driverId }: { driverId: string }) {
-    const reviewsQuery = useMemo(() => {
-        if(!driverId) return null;
-        return {
-            path: 'reviews',
-            constraints: [where('driverId', '==', driverId)]
-        }
-    }, [driverId]);
-
     const { data: reviews, isLoading } = useCollection<Review>(
-        reviewsQuery?.path,
-        reviewsQuery?.constraints
+        'reviews',
+        where('driverId', '==', driverId)
     );
 
     if (isLoading || !reviews) {
@@ -59,14 +53,15 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
     const { user } = useUser();
     const { toast } = useToast();
     const router = useRouter();
+    const firestore = useFirestore();
 
     const { data: driver, isLoading: isLoadingDriver } = useDoc<User>(`users/${ride.driverId}`);
     const { data: vehicle, isLoading: isLoadingVehicle } = useDoc<Vehicle>(`vehicles/${ride.vehicleId}`);
 
     const rideImage = PlaceHolderImages[index % 4];
 
-    const handleBooking = () => {
-        if (!user) {
+    const handleRequestBooking = () => {
+        if (!user || !firestore) {
             router.push('/login?redirect=/search');
             return;
         }
@@ -78,8 +73,29 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
             });
             return;
         }
-        // Navigate to checkout page instead of creating a pending booking
-        router.push(`/dashboard/checkout/${ride.id}`);
+
+        const bookingsCollection = collection(firestore, 'bookings');
+        addDocumentNonBlocking(bookingsCollection, {
+            rideId: ride.id,
+            passengerId: user.uid,
+            bookingTime: serverTimestamp(),
+            numberOfSeats: 1, // Default to 1 seat
+            status: 'pending',
+            paymentStatus: 'pending'
+        }).then(() => {
+            toast({
+                title: 'Request Sent!',
+                description: 'Your booking request has been sent to the driver for approval.'
+            });
+            router.push('/dashboard/bookings');
+        }).catch((error) => {
+            console.error("Booking request error:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Booking Request Failed',
+                description: error.message || "Could not send your booking request."
+            });
+        });
     };
 
     return (
@@ -142,8 +158,8 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
                             ) : null}
                         </div>
                         {user?.uid !== ride.driverId ? (
-                             <Button onClick={handleBooking} disabled={ride.availableSeats < 1}>
-                                {ride.availableSeats > 0 ? 'Book Now' : 'Full'}
+                             <Button onClick={handleRequestBooking} disabled={ride.availableSeats < 1}>
+                                {ride.availableSeats > 0 ? 'Request to Book' : 'Full'}
                             </Button>
                         ) : (
                             <Button disabled>Your Ride</Button>
@@ -193,21 +209,11 @@ function SearchPageComponent() {
     const [to, setTo] = useState(searchParams.get('to') || '');
     const [date, setDate] = useState(searchParams.get('date') ||'');
 
-    const ridesQuery = useMemo(() => {
-        const constraints: QueryConstraint[] = [
-            where("departureTime", ">=", new Date().toISOString())
-        ];
-
-        if (from) {
-             constraints.push(where("origin", ">=", from), where("origin", "<=", from + '\uf8ff'));
-        }
-        
-        return { path: "rides", constraints };
-    }, [from]);
-
     const { data: allRides, isLoading } = useCollection<Ride>(
-        ridesQuery.path,
-        ridesQuery.constraints
+        "rides",
+        where("departureTime", ">=", new Date().toISOString()),
+        where("origin", ">=", from),
+        where("origin", "<=", from + '\uf8ff')
     );
 
     const filteredRides = useMemo(() => {
@@ -261,7 +267,7 @@ function SearchPageComponent() {
                     </div>
                 )}
                 {!isLoading && filteredRides.length === 0 && (
-                     <div className="text-center py-12">
+                     <div className="text-center py-12 border rounded-lg bg-card/10">
                         <Car className="mx-auto h-12 w-12 text-muted-foreground" />
                         <h3 className="mt-4 text-lg font-medium">No rides found</h3>
                         <p className="mt-2 text-sm text-muted-foreground">Try adjusting your search filters or check back later.</p>

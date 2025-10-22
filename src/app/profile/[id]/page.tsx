@@ -3,7 +3,6 @@
 import { useCollection, useDoc } from "@/firebase";
 import { User } from "@/types/user";
 import { Review } from "@/types/review";
-import { collection, doc, query, where, orderBy } from "firebase/firestore";
 import { useParams } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,10 +10,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
+import { Timestamp } from "firebase/firestore";
 
 
 function ReviewCard({ review }: { review: Review }) {
     const { data: reviewer } = useDoc<User>(`users/${review.reviewerId}`);
+
+    const getReviewDate = () => {
+        if (!review.createdAt) return '';
+        // Firestore Timestamps can be either an object or a string from the server.
+        if (review.createdAt instanceof Timestamp) {
+            return review.createdAt.toDate().toLocaleDateString();
+        }
+        return new Date(review.createdAt).toLocaleDateString();
+    }
     
     return (
         <div className="border-b py-4">
@@ -36,7 +45,7 @@ function ReviewCard({ review }: { review: Review }) {
                 </div>
             </div>
             <p className="text-muted-foreground mt-3">{review.comment}</p>
-            <p className="text-xs text-muted-foreground/70 mt-2">{review.createdAt ? new Date(review.createdAt.toDate()).toLocaleDateString() : ''}</p>
+            <p className="text-xs text-muted-foreground/70 mt-2">{getReviewDate()}</p>
         </div>
     )
 }
@@ -47,20 +56,9 @@ function ProfilePageContent() {
 
     const { data: user, isLoading: isLoadingUser } = useDoc<User>(userId ? `users/${userId}` : null);
 
-    const reviewsQuery = useMemo(() => {
-        if (!userId) return null;
-        return {
-            path: 'reviews',
-            constraints: [
-                where('driverId', '==', userId),
-                orderBy('createdAt', 'desc')
-            ]
-        };
-    }, [userId]);
-
     const { data: reviews, isLoading: isLoadingReviews } = useCollection<Review>(
-        reviewsQuery?.path,
-        reviewsQuery?.constraints
+        userId ? 'reviews' : null,
+        'driverId', '==', userId
     );
 
     const avgRating = useMemo(() => {
@@ -68,6 +66,14 @@ function ProfilePageContent() {
         return reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length;
     }, [reviews]);
     
+    const getUserJoinDate = () => {
+        if (!user?.createdAt) return '';
+        if (user.createdAt instanceof Timestamp) {
+            return user.createdAt.toDate().toLocaleDateString();
+        }
+        return new Date(user.createdAt).toLocaleDateString();
+    }
+
     if (isLoadingUser) {
         return (
             <div className="container py-12 max-w-4xl mx-auto">
@@ -97,7 +103,7 @@ function ProfilePageContent() {
                 </Avatar>
                 <div>
                     <h1 className="text-3xl font-bold font-headline">{user.displayName}</h1>
-                    <p className="text-muted-foreground">Member since {user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString() : ''}</p>
+                    <p className="text-muted-foreground">Member since {getUserJoinDate()}</p>
                     {reviews && reviews.length > 0 && (
                         <div className="flex items-center gap-2 mt-2">
                             <Star className="w-5 h-5 text-amber-400 fill-amber-400" />

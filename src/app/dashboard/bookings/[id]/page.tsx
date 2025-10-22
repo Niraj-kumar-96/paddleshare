@@ -12,11 +12,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { orderBy, query, serverTimestamp } from "firebase/firestore";
+import { collection, orderBy, serverTimestamp } from "firebase/firestore";
 import { ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 
@@ -55,7 +55,7 @@ function ChatPageContent() {
     const [newMessage, setNewMessage] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const { data: booking, isLoading: isLoadingBooking } = useDoc<Booking>(`bookings/${bookingId}`);
+    const { data: booking, isLoading: isLoadingBooking } = useDoc<Booking>(bookingId ? `bookings/${bookingId}` : null);
     const { data: ride, isLoading: isLoadingRide } = useDoc<Ride>(booking ? `rides/${booking.rideId}` : null);
     
     // Determine the other user's ID
@@ -68,7 +68,7 @@ function ChatPageContent() {
 
     const { data: messages, isLoading: isLoadingMessages } = useCollection<Message>(
         bookingId ? `bookings/${bookingId}/messages` : null,
-        [orderBy('timestamp', 'asc')]
+        'timestamp', 'asc'
     );
     
     const isUserInvolved = user?.uid === booking?.passengerId || user?.uid === ride?.driverId;
