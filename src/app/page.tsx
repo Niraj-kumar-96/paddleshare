@@ -1,19 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Car, Leaf, MapPin, Users } from 'lucide-react';
+import { ArrowRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from '@/components/ui/carousel';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import EcoCounter from '@/components/eco-counter';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { MotionDiv } from '@/components/client/motion-div';
+import { Input } from '@/components/ui/input';
 
 const howItWorks = [
   {
@@ -34,13 +27,6 @@ const howItWorks = [
     description:
       'Connect with your driver or passengers, and enjoy a safe and affordable journey together.',
   },
-];
-
-const featuredRides = [
-  { id: 1, from: 'New York, NY', to: 'Boston, MA', price: 35, image: PlaceHolderImages.find(p => p.id === 'ride1') },
-  { id: 2, from: 'San Francisco, CA', to: 'Los Angeles, CA', price: 45, image: PlaceHolderImages.find(p => p.id === 'ride2') },
-  { id: 3, from: 'Chicago, IL', to: 'Detroit, MI', price: 30, image: PlaceHolderImages.find(p => p.id === 'ride3') },
-  { id: 4, from: 'Austin, TX', to: 'Houston, TX', price: 25, image: PlaceHolderImages.find(p => p.id === 'ride4') },
 ];
 
 const testimonials = [
@@ -89,7 +75,7 @@ export default function Home() {
           </MotionDiv>
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
           <div className="absolute inset-0 flex items-center justify-center text-center">
-            <div className="relative px-4 sm:px-6 lg:px-8">
+            <div className="relative container px-4 sm:px-6 lg:px-8">
               <MotionDiv
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -114,14 +100,25 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.6 }}
-                className="mt-8 flex flex-col sm:flex-row gap-4 justify-center"
               >
-                <Button asChild size="lg" className="font-headline text-lg">
-                  <Link href="/search">Find a Ride</Link>
-                </Button>
-                <Button asChild size="lg" variant="secondary" className="font-headline text-lg">
-                  <Link href="/offer-ride">Offer a Ride</Link>
-                </Button>
+                <form action="/search" className="mt-8 max-w-2xl mx-auto">
+                  <Card>
+                    <CardContent className="p-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 items-center">
+                        <div className="lg:col-span-2">
+                           <Input name="from" placeholder="Leaving from" className="h-12 text-base"/>
+                        </div>
+                        <div className="lg:col-span-2">
+                            <Input name="to" placeholder="Going to" className="h-12 text-base"/>
+                        </div>
+                        <Button type="submit" size="lg" className="w-full h-12 text-base">
+                          <Search className="mr-2 h-5 w-5" />
+                          Find a ride
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </form>
               </MotionDiv>
             </div>
           </div>
@@ -159,126 +156,33 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Eco Counter Section */}
-        <section className="py-16 md:py-24 bg-primary/5">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center gap-4 text-center">
-              <Leaf className="w-12 h-12 text-primary" />
-              <h2 className="text-3xl font-bold font-headline tracking-tighter sm:text-4xl">
-                Join the Green Movement
-              </h2>
-              <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                Every ride shared on PaddleShare contributes to a healthier planet. See our collective impact.
-              </p>
-              <EcoCounter />
-              <p className="font-medium text-muted-foreground">kg of CO₂ saved and counting!</p>
-            </div>
-          </div>
-        </section>
-
-        {/* Featured Rides Section */}
-        <section className="py-16 md:py-24 bg-background">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-center md:text-left">
-              <div>
-                <h2 className="text-3xl font-bold font-headline tracking-tighter sm:text-4xl">Featured Rides</h2>
-                <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl mt-4">
-                  Explore popular routes and book your next adventure.
-                </p>
-              </div>
-              <Button asChild variant="outline">
-                <Link href="/search">
-                  View All Rides <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-            <div className="mt-12">
-              <Carousel opts={{ align: 'start', loop: true }}>
-                <CarouselContent>
-                  {featuredRides.map((ride) => (
-                    <CarouselItem key={ride.id} className="md:basis-1/2 lg:basis-1/3">
-                      <MotionDiv
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.5 }}
-                      >
-                        <Card className="overflow-hidden group bg-card/60 backdrop-blur-sm border-border/20 shadow-lg hover:shadow-primary/20 transition-shadow duration-300">
-                          <CardContent className="p-0">
-                            <div className="relative h-48 w-full">
-                              {ride.image && (
-                                <Image
-                                  src={ride.image.imageUrl}
-                                  alt={ride.image.description}
-                                  fill
-                                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                  data-ai-hint={ride.image.imageHint}
-                                />
-                              )}
-                            </div>
-                            <div className="p-4">
-                              <div className="flex items-center justify-between">
-                                <p className="font-semibold text-lg">{ride.from}</p>
-                                <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                                <p className="font-semibold text-lg">{ride.to}</p>
-                              </div>
-                              <div className="mt-4 flex items-center justify-between">
-                                <p className="text-sm text-muted-foreground">Price per seat</p>
-                                <p className="text-xl font-bold text-primary">${ride.price}</p>
-                              </div>
-                              <Button asChild className="w-full mt-4">
-                                <Link href={`/search?to=${ride.to}`}>Book Now</Link>
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </MotionDiv>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                <CarouselPrevious className="hidden sm:flex" />
-                <CarouselNext className="hidden sm:flex" />
-              </Carousel>
-            </div>
-          </div>
-        </section>
 
         {/* Testimonials Section */}
-        <section className="py-16 md:py-24 bg-primary/5">
+        <section className="py-16 md:py-24 bg-secondary/50">
           <div className="container px-4 md:px-6">
             <h2 className="text-center text-3xl font-bold font-headline tracking-tighter sm:text-4xl">
               What Our Community Says
             </h2>
-            <div className="mt-12">
-              <Carousel opts={{ align: 'start', loop: true }}>
-                <CarouselContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
                   {testimonials.map((testimonial, index) => (
-                    <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
-                      <div className="p-2">
-                        <Card className="h-full bg-card/60 backdrop-blur-sm border-border/20 shadow-lg">
-                          <CardContent className="p-6 flex flex-col justify-between h-full">
-                            <p className="text-muted-foreground">"{testimonial.quote}"</p>
-                            <div className="mt-6 flex items-center gap-4">
-                              {testimonial.avatar && (
-                                <Avatar>
-                                  <AvatarImage src={testimonial.avatar.imageUrl} alt={testimonial.name} data-ai-hint={testimonial.avatar.imageHint} />
-                                  <AvatarFallback>{testimonial.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                              )}
-                              <div>
-                                <p className="font-semibold">{testimonial.name}</p>
-                                <p className="text-sm text-muted-foreground">{testimonial.role}</p>
-                              </div>
+                    <Card key={index} className="bg-card">
+                        <CardContent className="p-6 flex flex-col justify-between h-full">
+                        <p className="text-muted-foreground">"{testimonial.quote}"</p>
+                        <div className="mt-6 flex items-center gap-4">
+                            {testimonial.avatar && (
+                            <Avatar>
+                                <AvatarImage src={testimonial.avatar.imageUrl} alt={testimonial.name} data-ai-hint={testimonial.avatar.imageHint} />
+                                <AvatarFallback>{testimonial.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            )}
+                            <div>
+                            <p className="font-semibold">{testimonial.name}</p>
+                            <p className="text-sm text-muted-foreground">{testimonial.role}</p>
                             </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </CarouselItem>
+                        </div>
+                        </CardContent>
+                    </Card>
                   ))}
-                </CarouselContent>
-                <CarouselPrevious className="hidden sm:flex" />
-                <CarouselNext className="hidden sm:flex" />
-              </Carousel>
             </div>
           </div>
         </section>

@@ -88,7 +88,7 @@ export default function SignupPage() {
 
 
   return (
-    <Card className="w-full bg-card/60 backdrop-blur-lg border border-border/20 shadow-2xl shadow-primary/10">
+    <Card className="w-full bg-card shadow-xl">
       <CardHeader className="space-y-1 text-center">
         <div className="flex justify-center mb-4">
           <Logo />

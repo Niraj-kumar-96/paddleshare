@@ -4,18 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Calendar, Car, Clock, Users, Wallet, Loader } from "lucide-react";
+import { ArrowRight, Calendar, Car, Clock, Users, Wallet, Loader, Search } from "lucide-react";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { useCollection, useFirestore, useUser } from "@/firebase";
+import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
 import { collection, serverTimestamp, doc } from "firebase/firestore";
 import { Ride } from "@/types/ride";
+import { User } from "@/types/user";
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function RideCard({ ride }: { ride: Ride }) {
@@ -23,6 +24,13 @@ function RideCard({ ride }: { ride: Ride }) {
     const { user } = useUser();
     const { toast } = useToast();
     const router = useRouter();
+
+    const driverRef = useMemoFirebase(() => {
+        if(!firestore || !ride.driverId) return null;
+        return doc(firestore, 'users', ride.driverId);
+    }, [firestore, ride.driverId]);
+
+    const { data: driver } = useDoc<User>(driverRef);
 
     const rideImage = PlaceHolderImages[Math.floor(Math.random() * 4)]; // Use a random image for now
 
@@ -82,12 +90,11 @@ function RideCard({ ride }: { ride: Ride }) {
                 </div>
                 <div className="flex justify-between items-center mt-6 pt-4 border-t">
                     <div className="flex items-center gap-2">
-                        {/* In a real app, you would fetch driver details based on ride.driverId */}
                         <Avatar>
-                            <AvatarImage src="" alt="Driver" />
-                            <AvatarFallback>D</AvatarFallback>
+                            <AvatarImage src={driver?.photoURL ?? ""} alt={driver?.displayName ?? ""} />
+                            <AvatarFallback>{driver?.displayName?.charAt(0) ?? 'D'}</AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">Driver</span>
+                        <span className="font-medium">{driver?.displayName ?? "Driver"}</span>
                     </div>
                     {user?.uid !== ride.driverId ? (
                         <Button onClick={handleBooking}>Book Seat</Button>
@@ -100,16 +107,18 @@ function RideCard({ ride }: { ride: Ride }) {
     );
 }
 
-export default function SearchPage() {
+function SearchPageComponent() {
     const firestore = useFirestore();
+    const searchParams = useSearchParams();
+
     const ridesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return collection(firestore, "rides");
     }, [firestore]);
     const { data: allRides, isLoading } = useCollection<Ride>(ridesQuery);
     
-    const [from, setFrom] = useState('');
-    const [to, setTo] = useState('');
+    const [from, setFrom] = useState(searchParams.get('from') || '');
+    const [to, setTo] = useState(searchParams.get('to') || '');
 
     const filteredRides = useMemo(() => {
         if (!allRides) return [];
@@ -138,7 +147,10 @@ export default function SearchPage() {
                             <Label htmlFor="date">Date</Label>
                             <Input id="date" type="date" />
                         </div>
-                        <Button type="submit" className="w-full">Search Rides</Button>
+                        <Button type="submit" className="w-full">
+                            <Search className="mr-2 h-4 w-4" />
+                            Search Rides
+                        </Button>
                     </form>
                 </CardContent>
             </Card>
@@ -165,4 +177,13 @@ export default function SearchPage() {
             </div>
         </div>
     );
+}
+
+
+export default function SearchPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center py-12"><Loader className="animate-spin h-8 w-8" /></div>}>
+            <SearchPageComponent />
+        </Suspense>
+    )
 }
