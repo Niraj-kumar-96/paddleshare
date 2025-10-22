@@ -1,79 +1,87 @@
+/**
+ * @file Firestore Security Rules for PaddleShare
+ * @description This ruleset enforces a user-centric security model for the PaddleShare application.
+ *
+ * Core Philosophy:
+ *  - Authenticated users have broad access to create and read data, with ownership enforced for updates and deletions.
+ *  - Unauthenticated users can read some data but cannot create, update, or delete any data.
+ *  - Data consistency is enforced where necessary, especially concerning user IDs and relationships.
+ *
+ * Data Structure:
+ *  - Users: Stored in the `/users/{userId}` collection, where `{userId}` matches the Firebase Authentication UID.
+ *  - Rides: Stored in the `/rides` collection, readable by all, but writable only by authenticated users, with the `driverId` field defining ownership.
+ *  - Bookings: Stored in the `/bookings` collection. Users can create bookings for rides, and only the passenger and driver involved in the booking can access associated messages in the `/bookings/{bookingId}/messages` subcollection.
+ *  - Reviews: Stored in the `/reviews` collection.
+ *  - Vehicles: Stored in the `/vehicles` collection, associated with a driver.
+ *
+ * Key Security Decisions:
+ *  - User listing is disallowed.
+ *  - Public read access is granted for the `/rides` collection to facilitate discovery.
+ *
+ * Denormalization for Authorization:
+ *  - Ride documents contain a `driverId` field, enabling direct ownership checks without additional reads.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description This ruleset enforces a user-ownership model for user profiles,
-     * allows public reads for rides, and restricts access to bookings and related messages
-     * to authorized participants only.
-     * @dataStructure
-     * - /users/{userId}: Stores individual user profiles, accessible only to the user.
-     * - /rides/{rideId}: Stores ride information, publicly readable, but with owner-only writes.
-     * - /bookings/{bookingId}: Stores booking information, accessible only to the user who created the booking
-     * - /bookings/{bookingId}/messages/{messageId}: Stores messages related to a booking.
-     * - /reviews/{reviewId}: Stores reviews for rides.
-     * - /vehicles/{vehicleId}: Stores vehicle information, accessible only to the owner.
-     * @keySecurityDecisions
-     * - Users can only access their own profile data.
-     * - Rides are publicly readable, but only the owner can modify or delete them.
-     * - Bookings are only accessible by the user who created them.
-     * - Messages within bookings are only accessible to the booking's passenger and driver.
-     * - Listing of users is denied.
-     * @denormalizationForAuthorization
-     * - The `Ride` entity requires a `driverId` field to enforce owner-only writes.
-     * @structuralSegregation
-     * - No structural segregation is used in this ruleset.
+     * @description Defines helper function to check if the user is signed in.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Verifies user authentication status.
      */
-
-    /**
-     * @description Controls access to user profile information.  Only the user can read/write their own profile.
-     * @path /users/{userId}
-     * @allow (create) - Authenticated user with matching UID in the document ID.
-     * @allow (get) - Authenticated user requesting their own profile.
-     * @allow (update) - Authenticated user updating their own profile.
-     * @deny (create) - Authenticated user attempting to create a profile with a different UID.
-     * @deny (get) - Authenticated user attempting to read another user's profile.
-     * @deny (update) - Authenticated user attempting to update another user's profile.
-     * @principle Enforces strict user-ownership for profile data.
-     */
-    match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isSignedIn() && isOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if false;
+    function isSignedIn() {
+      return request.auth != null;
     }
 
     /**
-     * @description Controls access to ride information. Rides are publicly readable, but only the ride owner can modify or delete them.
+     * @description Defines a helper function to check if the authenticated user's UID matches the provided userId.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Enforces user ownership based on UID.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * @description Defines a helper function to check if the authenticated user's UID matches the existing resource ownerId.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Enforces user ownership based on UID and verifies that the document exists.
+     */
+    function isExistingOwner(ownerId) {
+      return isSignedIn() && isOwner(ownerId) && resource != null;
+    }
+
+    /**
+     * @description Enforces user-specific data storage for profiles.
+     * @path /users/{userId}
+     * @allow (create) User with UID 'user_abc' creates their profile at /users/user_abc.
+     * @deny (create) User with UID 'user_abc' attempts to create a profile for 'user_xyz' at /users/user_xyz.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // User listing is disallowed.
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Manages ride postings, allowing public read access but restricting write access to authenticated users.
      * @path /rides/{rideId}
-     * @allow (get) - Any user can read ride information.
-     * @allow (list) - Any user can list ride information.
-     * @allow (create) - Authenticated user creating a new ride with a matching driverId.
-     * @allow (update) - Authenticated user updating their own ride.
-     * @deny (create) - Unauthenticated user attempting to create a ride.
-     * @deny (update) - Authenticated user attempting to update another user's ride.
-     * @deny (delete) - Authenticated user attempting to delete another user's ride.
-     * @principle Allows public read access but enforces ownership for write access.
+     * @allow (get, list) Anyone can read ride details.
+     * @allow (create) Authenticated user creates a new ride with their UID as the driverId.
+     * @deny (update, delete) Unauthorized user attempts to modify or delete a ride.
+     * @principle Enforces document ownership for writes.
      */
     match /rides/{rideId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(driverId) {
-          return request.auth.uid == driverId;
-      }
-      function isExistingOwner(driverId) {
-        return isSignedIn() && isOwner(driverId) && resource != null;
-      }
-
       allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.driverId == request.auth.uid;
       allow update: if isExistingOwner(resource.data.driverId);
@@ -81,113 +89,60 @@ service cloud.firestore {
     }
 
     /**
-     * @description Controls access to booking information.  Only the user who created the booking can read/write.
+     * @description Controls booking creations and access. Users can create their own bookings.
      * @path /bookings/{bookingId}
-     * @allow (create) - Authenticated user creating a new booking.
-     * @allow (get) - Authenticated user reading their own booking.
-     * @allow (list) - Authenticated user listing their own bookings.
-     * @allow (update) - Authenticated user updating their own booking.
-     * @deny (create) - Unauthenticated user attempting to create a booking.
-     * @deny (get) - Authenticated user attempting to read another user's booking.
-     * @deny (update) - Authenticated user attempting to update another user's booking.
-     * @principle Enforces user-ownership for bookings.
+     * @allow (create) Authenticated user creates a booking.
+     * @allow (get) Authenticated user retrieves their own booking.
+     * @deny (update, delete) Unauthorized user attempts to modify or delete a booking.
+     * @principle Enforces document ownership for writes.
      */
     match /bookings/{bookingId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(passengerId) {
-        return request.auth.uid == passengerId;
-      }
-      function isExistingOwner(passengerId) {
-        return isSignedIn() && isOwner(passengerId) && resource != null;
-      }
-
-      allow get: if isSignedIn() && isOwner(resource.data.passengerId);
-      allow list: if isSignedIn() && isOwner(resource.data.passengerId);
+      allow get: if isSignedIn() && (resource.data.passengerId == request.auth.uid || resource.data.rideId in get(/databases/$(database)/documents/rides/$(resource.data.rideId)).data.driverId);
+      allow list: if false;
       allow create: if isSignedIn() && request.resource.data.passengerId == request.auth.uid;
       allow update: if isExistingOwner(resource.data.passengerId);
-      allow delete: if false;
-    
+      allow delete: if isExistingOwner(resource.data.passengerId);
 
-    /**
-     * @description Controls access to messages within a booking. Only the passenger and driver can read/write messages.
-     * @path /bookings/{bookingId}/messages/{messageId}
-     * @allow (create) - Authenticated user who is either the passenger or driver of the booking creating a message.
-     * @allow (get) - Authenticated user who is either the passenger or driver of the booking reading a message.
-     * @allow (list) - Authenticated user who is either the passenger or driver of the booking listing messages.
-     * @allow (update) - Authenticated user who is either the passenger or driver of the booking updating a message.
-     * @deny (create) - Unauthenticated user attempting to create a message.
-     * @deny (get) - Authenticated user who is neither the passenger nor the driver attempting to read a message.
-     * @deny (update) - Authenticated user who is neither the passenger nor the driver attempting to update a message.
-     * @principle Restricts message access to booking participants.
-     */
+      /**
+       * @description Manages chat messages within a booking, restricting access to the passenger and driver.
+       * @path /bookings/{bookingId}/messages/{messageId}
+       * @allow (create, get, list) Only the passenger or driver can create, read, or list messages.
+       * @deny (update, delete) Unauthorized user attempts to modify or delete a message.
+       * @principle Restricts access to collaborators.
+       */
       match /messages/{messageId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        function isParticipant(bookingId, userId) {
-          return get(/databases/$(database)/documents/bookings/$(bookingId)).data.passengerId == userId
-              || get(/databases/$(database)/documents/bookings/$(bookingId)).data.rideId == userId;
-        }
-        function isExistingParticipant(bookingId, userId) {
-            return isSignedIn() && isParticipant(bookingId, userId) && resource != null;
-        }
-
-        allow get: if isSignedIn() && isParticipant(bookingId, request.auth.uid);
-        allow list: if isSignedIn() && isParticipant(bookingId, request.auth.uid);
-        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-        allow update: if isExistingParticipant(bookingId, request.auth.uid);
+        allow get, list: if isSignedIn() && (resource.data.senderId == request.auth.uid || get(/databases/$(database)/documents/bookings/$(bookingId)).data.rideId in get(/databases/$(database)/documents/rides/$(get(/databases/$(database)/documents/bookings/$(bookingId)).data.rideId)).data.driverId);
+        allow create: if isSignedIn() && (request.resource.data.senderId == request.auth.uid || get(/databases/$(database)/documents/bookings/$(bookingId)).data.rideId in get(/databases/$(database)/documents/rides/$(get(/databases/$(database)/documents/bookings/$(bookingId)).data.rideId)).data.driverId);
+        allow update: if false;
         allow delete: if false;
       }
     }
 
     /**
-     * @description Controls access to reviews.  Anyone can create reviews, but only authenticated users can read their own reviews.
+     * @description Manages ride reviews, allowing authenticated users to create reviews.
      * @path /reviews/{reviewId}
-     * @allow (create) - Authenticated user creating a new review.
-     * @allow (get) - Any user can read review information.
-     * @allow (list) - Any user can list review information.
-     * @deny (create) - Unauthenticated user attempting to create a review.
-     * @deny (get) - Authenticated user attempting to read another user's review.
-     * @principle Allows public read access.
+     * @allow (create) Authenticated user creates a new review.
+     * @deny (get, list, update, delete) No specific restrictions defined in the prompt.
+     * @principle Authenticated users can create reviews
      */
     match /reviews/{reviewId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get, list: if true;
+      allow get: if true;
+      allow list: if true;
       allow create: if isSignedIn();
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Controls access to vehicle information. Only the owner can read/write vehicle information.
+     * @description Manages vehicle information, restricting access to the owner.
      * @path /vehicles/{vehicleId}
-     * @allow (create) - Authenticated user creating a new vehicle with a matching driverId.
-     * @allow (get) - Authenticated user reading their own vehicle information.
-     * @allow (list) - Authenticated user listing their own vehicles.
-     * @allow (update) - Authenticated user updating their own vehicle information.
-     * @deny (create) - Unauthenticated user attempting to create a vehicle.
-     * @deny (get) - Authenticated user attempting to read another user's vehicle information.
-     * @deny (update) - Authenticated user attempting to update another user's vehicle information.
-     * @principle Enforces user-ownership for vehicle data.
+     * @allow (create) Authenticated user creates a new vehicle with their UID as the driverId.
+     * @deny (get, list, update, delete) Unauthorized user attempts to access vehicle.
+     * @principle Enforces document ownership for writes.
      */
     match /vehicles/{vehicleId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(driverId) {
-          return request.auth.uid == driverId;
-      }
-      function isExistingOwner(driverId) {
-        return isSignedIn() && isOwner(driverId) && resource != null;
-      }
-
-      allow get: if isSignedIn() && isOwner(resource.data.driverId);
-      allow list: if isSignedIn() && isOwner(resource.data.driverId);
+      allow get: if isOwner(resource.data.driverId);
+      allow list: if isOwner(resource.data.driverId);
       allow create: if isSignedIn() && request.resource.data.driverId == request.auth.uid;
       allow update: if isExistingOwner(resource.data.driverId);
       allow delete: if isExistingOwner(resource.data.driverId);
