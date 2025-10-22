@@ -19,6 +19,8 @@ import { ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
+import ProtectedRoute from "@/components/ProtectedRoute";
+
 
 function ChatMessage({ message, sender }: { message: Message, sender?: User | null }) {
     const { user } = useUser();
@@ -40,14 +42,14 @@ function ChatMessage({ message, sender }: { message: Message, sender?: User | nu
             )}>
                 <p className="text-sm">{message.text}</p>
                  <p className="text-xs mt-1 text-right opacity-70">
-                    {timestamp.toLocaleTimeString()}
+                    {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
             </div>
          </div>
     )
 }
 
-function ChatPage() {
+function ChatPageContent() {
     const params = useParams();
     const bookingId = params.id as string;
     const { user, isUserLoading } = useUser();
@@ -122,18 +124,32 @@ function ChatPage() {
     }
 
     if (!isUserInvolved) {
-        return <p>You are not authorized to view this chat.</p>
+        return (
+            <div className="container py-12 text-center">
+                <p>You are not authorized to view this chat.</p>
+                <Button asChild variant="link" className="mt-4"><Link href="/dashboard">Return to Dashboard</Link></Button>
+            </div>
+        )
     }
     
     if (!booking || !ride) {
         return <p>Booking not found.</p>
     }
 
+    if(booking.status !== 'confirmed' || booking.paymentStatus !== 'paid') {
+        return (
+            <div className="container py-12 text-center">
+                <p>Chat is only available for confirmed and paid bookings.</p>
+                 <Button asChild variant="link" className="mt-4"><Link href="/dashboard/bookings">Return to My Trips</Link></Button>
+            </div>
+        )
+    }
+
     return (
         <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto">
-             <Link href="/dashboard/bookings" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
+             <Link href={user?.uid === ride.driverId ? `/dashboard/rides/manage/${ride.id}` : "/dashboard/bookings"} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
                 <ArrowLeft className="h-4 w-4" />
-                Back to Bookings
+                Back to {user?.uid === ride.driverId ? "Manage Ride" : "My Trips"}
             </Link>
             <Card className="flex flex-col h-[calc(100vh-12rem)]">
                 <CardHeader className="border-b">
@@ -164,4 +180,10 @@ function ChatPage() {
     )
 }
 
-export default ChatPage;
+export default function ChatPage() {
+    return (
+        <ProtectedRoute>
+            <ChatPageContent />
+        </ProtectedRoute>
+    )
+};

@@ -18,10 +18,10 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { CreditCard } from "lucide-react";
+import { CreditCard, MessageSquare } from "lucide-react";
 import React from 'react';
 
-function BookingRequestCard({ booking }: { booking: Booking }) {
+function BookingRequestCard({ booking, ride }: { booking: Booking, ride: Ride }) {
     const firestore = useFirestore();
     const { toast } = useToast();
 
@@ -61,25 +61,40 @@ function BookingRequestCard({ booking }: { booking: Booking }) {
     return (
         <div className="flex items-center justify-between p-4 border rounded-lg bg-background">
             <div className="flex-1">
-                <Link href={`/profile/${passenger.id}`} className="flex items-center gap-4 group">
-                    <Avatar>
-                        <AvatarImage src={passenger.photoURL} alt={passenger.displayName} />
-                        <AvatarFallback>{passenger.displayName.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="group-hover:underline">
-                        <p className="font-semibold">{passenger.displayName}</p>
-                        <p className="text-sm text-muted-foreground">{booking.numberOfSeats} seat(s) requested</p>
-                    </div>
-                </Link>
+                <div className="flex items-center justify-between">
+                     <Link href={`/profile/${passenger.id}`} className="flex items-center gap-4 group">
+                        <Avatar>
+                            <AvatarImage src={passenger.photoURL ?? ""} alt={passenger.displayName ?? ""} />
+                            <AvatarFallback>{passenger.displayName?.charAt(0) ?? "P"}</AvatarFallback>
+                        </Avatar>
+                        <div className="group-hover:underline">
+                            <p className="font-semibold">{passenger.displayName}</p>
+                            <p className="text-sm text-muted-foreground">{booking.numberOfSeats} seat(s) requested</p>
+                        </div>
+                    </Link>
+                    {booking.status !== 'pending' && (
+                        <Badge variant={booking.status === 'confirmed' ? 'default' : booking.status === 'declined' ? 'destructive' : 'secondary'} className="capitalize">{booking.status}</Badge>
+                    )}
+                </div>
                 {booking.status === 'confirmed' && (
-                    <div className="flex items-center gap-2 mt-2 text-sm">
-                        <CreditCard className="w-4 h-4 text-muted-foreground" />
-                        <span className={cn(
-                            "font-medium",
-                            booking.paymentStatus === 'paid' ? 'text-green-600' : 'text-amber-600'
-                        )}>
-                            Payment {booking.paymentStatus}
-                        </span>
+                    <div className="pl-14 mt-2 space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                            <CreditCard className="w-4 h-4 text-muted-foreground" />
+                            <span className={cn(
+                                "font-medium",
+                                booking.paymentStatus === 'paid' ? 'text-green-600' : 'text-amber-600'
+                            )}>
+                                Payment {booking.paymentStatus}
+                            </span>
+                        </div>
+                        {booking.paymentStatus === 'paid' && (
+                             <Button asChild size="sm" variant="outline">
+                                <Link href={`/dashboard/bookings/${booking.id}`}>
+                                    <MessageSquare className="mr-2 h-4 w-4" />
+                                    Chat with passenger
+                                </Link>
+                            </Button>
+                        )}
                     </div>
                 )}
             </div>
@@ -89,9 +104,6 @@ function BookingRequestCard({ booking }: { booking: Booking }) {
                     <Button size="sm" onClick={() => handleUpdateStatus('confirmed')}>Approve</Button>
                     <Button size="sm" variant="destructive" onClick={() => handleUpdateStatus('declined')}>Decline</Button>
                 </div>
-            )}
-            {booking.status !== 'pending' && (
-                 <Badge variant={booking.status === 'confirmed' ? 'default' : booking.status === 'declined' ? 'destructive' : 'secondary'} className="capitalize">{booking.status}</Badge>
             )}
         </div>
     )
@@ -156,7 +168,7 @@ function ManageRidePageContent() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {pendingBookings.length > 0 ? (
-                        pendingBookings.map(booking => <BookingRequestCard key={booking.id} booking={booking} />)
+                        pendingBookings.map(booking => <BookingRequestCard key={booking.id} booking={booking} ride={ride} />)
                     ) : (
                         <p className="text-muted-foreground">No pending requests.</p>
                     )}
@@ -170,7 +182,7 @@ function ManageRidePageContent() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {otherBookings.length > 0 ? (
-                         otherBookings.map(booking => <BookingRequestCard key={booking.id} booking={booking} />)
+                         otherBookings.map(booking => <BookingRequestCard key={booking.id} booking={booking} ride={ride}/>)
                     ) : (
                         <p className="text-muted-foreground">No other bookings found.</p>
                     )}

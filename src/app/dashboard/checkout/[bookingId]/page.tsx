@@ -21,7 +21,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 
-const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
+const stripePromise = STRIPE_PUBLISHABLE_KEY ? loadStripe(STRIPE_PUBLISHABLE_KEY) : null;
 
 function CheckoutForm({ booking, ride }: { booking: Booking; ride: Ride }) {
   const stripe = useStripe();
@@ -117,7 +117,7 @@ function CheckoutPageContent() {
   const { data: ride, isLoading: isLoadingRide } = useDoc<Ride>(rideRef);
 
   useEffect(() => {
-    if (booking && ride) {
+    if (booking && ride && booking.paymentStatus === 'pending') {
         createPaymentIntent({ 
             bookingId: booking.id, 
             amount: ride.fare * booking.numberOfSeats 
@@ -126,6 +126,8 @@ function CheckoutPageContent() {
                 clientSecret,
                 appearance: { theme: 'stripe' },
             });
+        }).catch(error => {
+            console.error("Error creating payment intent:", error);
         });
     }
   }, [booking, ride]);
@@ -153,6 +155,24 @@ function CheckoutPageContent() {
   if (!booking || !ride) {
     return <p>Booking not found.</p>
   }
+  
+  if (booking.paymentStatus === 'paid') {
+      return (
+          <div className="max-w-md mx-auto text-center">
+              <Card>
+                  <CardHeader>
+                      <CardTitle>Payment Complete</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                      <p>This booking has already been paid for.</p>
+                       <Button asChild className="mt-4">
+                           <Link href="/dashboard/bookings">Return to My Trips</Link>
+                       </Button>
+                  </CardContent>
+              </Card>
+          </div>
+      )
+  }
 
   return (
     <div className="max-w-md mx-auto">
@@ -166,7 +186,7 @@ function CheckoutPageContent() {
                 <CardDescription>Securely pay for your ride from {ride.origin} to {ride.destination}.</CardDescription>
             </CardHeader>
             <CardContent>
-                {options && (
+                {options && stripePromise && (
                     <Elements stripe={stripePromise} options={options}>
                         <CheckoutForm booking={booking} ride={ride}/>
                     </Elements>

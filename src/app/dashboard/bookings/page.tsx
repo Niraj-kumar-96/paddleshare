@@ -4,7 +4,7 @@
 import { useCollection, useFirestore, useUser } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
 import { Booking } from "@/types/booking";
-import { collection, query, where, doc, getDocs } from "firebase/firestore";
+import { collection, query, where, doc, getDocs, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Ride } from "@/types/ride";
 import { useDoc } from "@/firebase/firestore/use-doc";
@@ -14,14 +14,12 @@ import Link from "next/link";
 import { MessageSquare, Star, CreditCard, Loader } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { useRouter } from "next/navigation";
 
 
 function BookingItem({ booking }: { booking: Booking }) {
     const firestore = useFirestore();
     const [hasReviewed, setHasReviewed] = useState(true);
     const { user } = useUser();
-    const router = useRouter();
 
     const rideRef = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -83,7 +81,7 @@ function BookingItem({ booking }: { booking: Booking }) {
             </CardContent>
              {ride && booking.status === 'confirmed' && (
                 <CardFooter className="p-4 border-t flex flex-col gap-2">
-                     {booking.paymentStatus === 'pending' && (
+                     {booking.paymentStatus === 'pending' && !isRidePast && (
                         <Button asChild className="w-full">
                             <Link href={`/dashboard/checkout/${booking.id}`}>
                                 <CreditCard className="mr-2 h-4 w-4" />
@@ -140,7 +138,7 @@ export default function BookingsPage() {
 
     const passengerBookingsQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
-        return query(collection(firestore, "bookings"), where("passengerId", "==", user.uid));
+        return query(collection(firestore, "bookings"), where("passengerId", "==", user.uid), orderBy("bookingTime", "desc"));
     }, [firestore, user]);
 
     const { data: passengerBookings, isLoading } = useCollection<Booking>(passengerBookingsQuery);
