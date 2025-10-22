@@ -7,14 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDoc, useFirestore, useUser } from '@/firebase';
-import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useMemoFirebase } from '@/firebase/provider';
 import { STRIPE_PUBLISHABLE_KEY } from '@/app/config';
 import { useToast } from '@/hooks/use-toast';
 import { Ride } from '@/types/ride';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js';
-import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { ArrowLeft, Loader } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -36,20 +35,23 @@ function CheckoutForm({ ride }: { ride: Ride }) {
     event.preventDefault();
 
     if (!stripe || !elements || !firestore || !user) {
+      setErrorMessage('Services are not ready. Please try again.');
       return;
     }
 
     setIsLoading(true);
     setErrorMessage(null);
 
+    // 1. Submit payment details to Stripe to get them ready for confirmation
     const { error: submitError } = await elements.submit();
     if (submitError) {
-      setErrorMessage(submitError.message || 'An unexpected error occurred.');
+      setErrorMessage(submitError.message || 'An unexpected error occurred while preparing your payment.');
       setIsLoading(false);
       return;
     }
-
-    const { clientSecret, paymentIntentId } = await createPaymentIntent({
+    
+    // 2. Create a Payment Intent on our server
+    const { clientSecret } = await createPaymentIntent({
       bookingId: 'temp', // This will be replaced by the actual bookingId after creation
       amount: ride.fare * 1, // Assuming 1 seat for now
     });
@@ -60,7 +62,8 @@ function CheckoutForm({ ride }: { ride: Ride }) {
         return;
     }
 
-    const { error } = await stripe.confirmPayment({
+    // 3. Confirm the payment with Stripe
+    const { error: confirmationError, paymentIntent } = await stripe.confirmPayment({
       elements,
       clientSecret,
       confirmParams: {
@@ -69,34 +72,68 @@ function CheckoutForm({ ride }: { ride: Ride }) {
       redirect: 'if_required', 
     });
 
-    if (error) {
-      setErrorMessage(error.message || 'An unexpected error occurred.');
+    if (confirmationError) {
+      setErrorMessage(confirmationError.message || 'An unexpected error occurred during payment confirmation.');
+      setIsLoading(false);
+      return;
+    }
+
+    // 4. If payment is successful, run a Firestore transaction to book the ride
+    if (paymentIntent?.status === 'succeeded') {
+      try {
+        await runTransaction(firestore, async (transaction) => {
+          const rideRef = doc(firestore, 'rides', ride.id);
+          const bookingRef = doc(collection(firestore, 'bookings'));
+
+          // Re-fetch the ride document inside the transaction to get the latest data
+          const rideDoc = await transaction.get(rideRef);
+          if (!rideDoc.exists()) {
+            throw "This ride no longer exists.";
+          }
+
+          const currentRideData = rideDoc.data() as Ride;
+
+          // Check for available seats
+          if (currentRideData.availableSeats < 1) {
+            throw "Sorry, all seats for this ride have been booked.";
+          }
+          
+          // All checks passed, perform the writes
+          transaction.set(bookingRef, {
+            rideId: ride.id,
+            passengerId: user.uid,
+            bookingTime: serverTimestamp(),
+            numberOfSeats: 1,
+            status: 'confirmed',
+            paymentStatus: 'paid',
+          });
+          
+          transaction.update(rideRef, {
+            availableSeats: currentRideData.availableSeats - 1,
+            passengers: [...(currentRideData.passengers || []), user.uid],
+          });
+        });
+
+        // If the transaction is successful
+        toast({
+          title: 'Payment Successful!',
+          description: 'Your ride is confirmed. Enjoy the trip!',
+        });
+        router.push('/dashboard/bookings');
+
+      } catch (e: any) {
+        // This will catch errors from the transaction, including the ones we threw
+        console.error("Transaction failed: ", e);
+        setErrorMessage(e.toString() || 'Failed to book the ride. Please contact support. Your payment may need to be refunded.');
+        // TODO: Implement a refund mechanism for failed transactions post-payment.
+        toast({
+            variant: "destructive",
+            title: "Booking Failed",
+            description: e.toString() || 'Could not finalize your booking after payment. Contacting support.'
+        })
+      }
     } else {
-      const batch = writeBatch(firestore);
-
-      const bookingRef = doc(collection(firestore, 'bookings'));
-      batch.set(bookingRef, {
-        rideId: ride.id,
-        passengerId: user.uid,
-        bookingTime: serverTimestamp(),
-        numberOfSeats: 1,
-        status: 'confirmed',
-        paymentStatus: 'paid',
-      });
-      
-      const rideRef = doc(firestore, 'rides', ride.id);
-      batch.update(rideRef, {
-        availableSeats: ride.availableSeats - 1,
-        passengers: [...(ride.passengers || []), user.uid],
-      });
-      
-      await batch.commit();
-
-      toast({
-        title: 'Payment Successful!',
-        description: 'Your ride is confirmed. Enjoy the trip!',
-      });
-      router.push('/dashboard/bookings');
+        setErrorMessage(`Payment status: ${paymentIntent?.status}. Please try again.`);
     }
 
     setIsLoading(false);
@@ -128,7 +165,7 @@ function CheckoutPageContent() {
   const { data: ride, isLoading: isLoadingRide } = useDoc<Ride>(rideRef);
 
   useEffect(() => {
-    if (ride) {
+    if (ride && ride.fare > 0) {
         createPaymentIntent({ 
             bookingId: 'temp', 
             amount: ride.fare * 1 
@@ -197,12 +234,13 @@ function CheckoutPageContent() {
                 <CardDescription>Securely pay for your ride from {ride.origin} to {ride.destination}.</CardDescription>
             </CardHeader>
             <CardContent>
-                {options && stripePromise && (
+                {options && stripePromise ? (
                     <Elements stripe={stripePromise} options={options}>
                         <CheckoutForm ride={ride}/>
                     </Elements>
+                ) : (
+                  <div className="flex justify-center p-8"><Loader className="animate-spin" /></div>
                 )}
-                {!options && <div className="flex justify-center p-8"><Loader className="animate-spin" /></div>}
             </CardContent>
         </Card>
     </div>
@@ -218,5 +256,3 @@ export default function CheckoutPage() {
         </ProtectedRoute>
     )
 }
-
-    
