@@ -163,7 +163,9 @@ export default function Header() {
           </div>
           
           <div className="md:hidden flex-grow flex justify-center">
-             <Logo />
+             <Link href="/">
+                <Logo />
+             </Link>
           </div>
           
           <div className="flex items-center gap-2">
