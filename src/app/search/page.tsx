@@ -83,6 +83,7 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
             bookingTime: new Date().toISOString(),
             numberOfSeats: 1, 
             status: "pending",
+            paymentStatus: 'pending'
         }).then(() => {
             toast({
                 title: "Booking Requested!",
@@ -284,3 +285,5 @@ export default function SearchPage() {
     // Wrap with React.Suspense to handle query param reading
     return <React.Suspense><SearchPageComponent /></React.Suspense>
 }
+
+    
