@@ -34,7 +34,7 @@ export interface UseCollectionResult<T> {
  *
  * @template T Optional type for document data. Defaults to any.
  * @param {string | null | undefined} path - The path to the collection. The hook will not run if the path is null or undefined.
- * @param {QueryConstraint[]} [queryConstraints] - An array of query constraints (e.g., from where(), orderBy(), limit()).
+ * @param {QueryConstraint[]} [queryConstraints] - An optional array of query constraints (e.g., from where(), orderBy(), limit()).
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
 export function useCollection<T = any>(

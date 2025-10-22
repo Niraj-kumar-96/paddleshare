@@ -26,7 +26,7 @@ import { collection, serverTimestamp } from "firebase/firestore";
 function DriverRating({ driverId }: { driverId: string }) {
     const { data: reviews, isLoading } = useCollection<Review>(
         'reviews',
-        where('driverId', '==', driverId)
+        [where('driverId', '==', driverId)]
     );
 
     if (isLoading || !reviews) {
@@ -209,11 +209,21 @@ function SearchPageComponent() {
     const [to, setTo] = useState(searchParams.get('to') || '');
     const [date, setDate] = useState(searchParams.get('date') ||'');
 
+    const queryConstraints = useMemo(() => {
+        const constraints: QueryConstraint[] = [];
+        constraints.push(where("departureTime", ">=", new Date().toISOString()));
+
+        if (from) {
+            constraints.push(where("origin", ">=", from));
+            constraints.push(where("origin", "<=", from + '\uf8ff'));
+        }
+        
+        return constraints;
+    }, [from]);
+
     const { data: allRides, isLoading } = useCollection<Ride>(
         "rides",
-        where("departureTime", ">=", new Date().toISOString()),
-        where("origin", ">=", from),
-        where("origin", "<=", from + '\uf8ff')
+        queryConstraints
     );
 
     const filteredRides = useMemo(() => {

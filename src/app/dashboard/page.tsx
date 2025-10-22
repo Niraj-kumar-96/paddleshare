@@ -14,23 +14,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function DashboardPage() {
     const { user } = useUser();
 
-    const driverRidesQuery = useMemo(() => {
-        if (!user) return null;
-        return { path: "rides", constraints: [where("driverId", "==", user.uid)] };
-    }, [user]);
-
-    const passengerBookingsQuery = useMemo(() => {
-        if (!user) return null;
-        return { path: "bookings", constraints: [where("passengerId", "==", user.uid)] };
-    }, [user]);
-
     const { data: driverRides, isLoading: isLoadingRides } = useCollection<Ride>(
-        driverRidesQuery?.path,
-        driverRidesQuery?.constraints
+        user ? "rides" : null,
+        user ? [where("driverId", "==", user.uid)] : []
     );
     const { data: passengerBookings, isLoading: isLoadingBookings } = useCollection<Booking>(
-        passengerBookingsQuery?.path,
-        passengerBookingsQuery?.constraints
+        user ? "bookings" : null,
+        user ? [where("passengerId", "==", user.uid)] : []
     );
 
     const totalEarnings = useMemo(() => {

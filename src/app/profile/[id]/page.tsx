@@ -58,7 +58,7 @@ function ProfilePageContent() {
 
     const { data: reviews, isLoading: isLoadingReviews } = useCollection<Review>(
         userId ? 'reviews' : null,
-        'driverId', '==', userId
+        userId ? [where('driverId', '==', userId)] : []
     );
 
     const avgRating = useMemo(() => {

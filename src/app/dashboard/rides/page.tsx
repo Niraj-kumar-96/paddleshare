@@ -23,20 +23,12 @@ function RideItem({ ride }: { ride: Ride }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     
-    const confirmedBookingsQuery = useMemo(() => {
-        if (!ride.id) return null;
-        return {
-            path: "bookings",
-            constraints: [
-                where("rideId", "==", ride.id),
-                where("status", "==", "confirmed")
-            ]
-        }
-    }, [ride.id]);
-
     const { data: confirmedBookings } = useCollection<Booking>(
-        confirmedBookingsQuery.path,
-        confirmedBookingsQuery.constraints
+        ride.id ? "bookings" : null,
+        [
+            where("rideId", "==", ride.id),
+            where("status", "==", "confirmed")
+        ]
     );
     
     const passengerCount = confirmedBookings?.length || 0;
@@ -173,7 +165,7 @@ export default function RidesPage() {
     const { user } = useUser();
 
     const { data: driverRides, isLoading: isLoadingRides } = useCollection<Ride>(
-        'rides',
+        user ? 'rides' : null,
         user ? [where("driverId", "==", user.uid)] : []
     );
 

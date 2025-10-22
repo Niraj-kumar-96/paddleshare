@@ -43,7 +43,6 @@ function BookingCard({ booking }: { booking: Booking }) {
                     }
                     transaction.update(rideRef, { 
                         availableSeats: rideData.availableSeats - booking.numberOfSeats,
-                        passengers: [...(rideData.passengers || []), passenger!.id]
                     });
                 }
                 
@@ -137,7 +136,7 @@ function ManageRidePageContent() {
     
     const { data: bookings, isLoading: isLoadingBookings } = useCollection<Booking>(
         rideId ? 'bookings' : null,
-        where('rideId', '==', rideId)
+        [where('rideId', '==', rideId)]
     );
     
     const pendingBookings = useMemo(() => bookings?.filter(b => b.status === 'pending'), [bookings]);

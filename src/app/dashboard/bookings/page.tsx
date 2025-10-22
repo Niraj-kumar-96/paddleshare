@@ -83,24 +83,6 @@ function BookingItem({ booking }: { booking: Booking }) {
         }
     }
 
-    const handleDeleteRequest = () => {
-        if (!firestore) return;
-        const bookingRef = doc(firestore, 'bookings', booking.id);
-        deleteDoc(bookingRef).then(() => {
-             toast({
-                title: "Request Withdrawn",
-                description: "Your booking request has been withdrawn."
-            });
-        }).catch(error => {
-             toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: error.message || "Could not withdraw your request."
-            });
-        })
-    }
-
-
     const isRidePast = ride ? new Date(ride.departureTime) < new Date() : false;
     const canCancel = !isRidePast && (booking.status === 'confirmed' || booking.status === 'pending');
     const totalFare = ride ? (ride.fare * booking.numberOfSeats).toFixed(2) : '0.00';
@@ -144,20 +126,26 @@ function BookingItem({ booking }: { booking: Booking }) {
                      {booking.status === 'pending' && !isRidePast && (
                         <>
                             <p className="text-sm text-muted-foreground text-center w-full">Waiting for driver approval...</p>
-                            <Button variant="destructive" className="w-full" onClick={handleDeleteRequest}>
+                            <Button variant="destructive" className="w-full" onClick={handleCancelBooking}>
                                 <XCircle className="mr-2 h-4 w-4" />
-                                Withdraw Request
+                                Cancel Request
                             </Button>
                         </>
                      )}
 
                      {booking.status === 'confirmed' && booking.paymentStatus === 'pending' && !isRidePast && (
-                        <Button asChild className="w-full">
-                            <Link href={`/dashboard/checkout/${booking.id}`}>
-                                <CreditCard className="mr-2 h-4 w-4" />
-                                Proceed to Payment
-                            </Link>
-                        </Button>
+                        <div className="w-full grid gap-2">
+                            <Button asChild className="w-full">
+                                <Link href={`/dashboard/checkout/${booking.id}`}>
+                                    <CreditCard className="mr-2 h-4 w-4" />
+                                    Proceed to Payment
+                                </Link>
+                            </Button>
+                            <Button variant="destructive" className="w-full" onClick={handleCancelBooking}>
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Cancel Booking
+                            </Button>
+                        </div>
                      )}
 
                      {booking.status === 'confirmed' && booking.paymentStatus === 'paid' && !isRidePast && (
@@ -179,14 +167,6 @@ function BookingItem({ booking }: { booking: Booking }) {
                             </Link>
                         </Button>
                     )}
-
-
-                     {canCancel && booking.status === 'confirmed' && (
-                        <Button variant="destructive" className="w-full" onClick={handleCancelBooking}>
-                            <XCircle className="mr-2 h-4 w-4" />
-                            Cancel Booking
-                        </Button>
-                     )}
                 </CardFooter>
             )}
         </Card>

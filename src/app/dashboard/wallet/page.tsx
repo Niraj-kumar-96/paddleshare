@@ -51,32 +51,19 @@ function WalletSkeleton() {
 export default function WalletPage() {
     const { user } = useUser();
 
-    const ridesQuery = useMemo(() => {
-        if (!user) return null;
-        return { path: "rides", constraints: [where("driverId", "==", user.uid)] };
-    }, [user]);
-
     const { data: rides, isLoading: isLoadingRides } = useCollection<Ride>(
-        ridesQuery?.path,
-        ridesQuery?.constraints
+        user ? "rides" : null,
+        user ? [where("driverId", "==", user.uid)] : []
     );
 
     const rideIds = useMemo(() => rides?.map(r => r.id) || [], [rides]);
 
-    const bookingsQuery = useMemo(() => {
-        if (rideIds.length === 0) return null;
-        return {
-            path: "bookings",
-            constraints: [
+    const { data: bookings, isLoading: isLoadingBookings } = useCollection<Booking>(
+        rideIds.length > 0 ? "bookings" : null,
+        rideIds.length > 0 ? [
                 where("rideId", "in", rideIds),
                 where("paymentStatus", "==", "paid")
-            ]
-        };
-    }, [rideIds]);
-
-    const { data: bookings, isLoading: isLoadingBookings } = useCollection<Booking>(
-        bookingsQuery?.path,
-        bookingsQuery?.constraints
+            ] : []
     );
 
     const { totalEarnings, totalSeatsSold, paidRides } = useMemo(() => {
