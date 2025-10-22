@@ -10,6 +10,9 @@ import { Ride } from "@/types/ride";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { doc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { MessageSquare } from "lucide-react";
 
 function BookingItem({ booking }: { booking: Booking }) {
     const firestore = useFirestore();
@@ -21,8 +24,8 @@ function BookingItem({ booking }: { booking: Booking }) {
     const { data: ride, isLoading } = useDoc<Ride>(rideRef);
 
     return (
-        <Card className="bg-card/80">
-            <CardContent className="p-4">
+        <Card className="bg-card/80 flex flex-col">
+            <CardContent className="p-4 flex-1">
                 {isLoading && (
                     <div className="space-y-2">
                         <Skeleton className="h-6 w-3/4" />
@@ -46,6 +49,16 @@ function BookingItem({ booking }: { booking: Booking }) {
                     </div>
                 )}
             </CardContent>
+             {ride && (
+                <div className="p-4 border-t">
+                     <Button asChild className="w-full">
+                        <Link href={`/dashboard/bookings/${booking.id}`}>
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            View Chat
+                        </Link>
+                    </Button>
+                </div>
+            )}
         </Card>
     );
 }
