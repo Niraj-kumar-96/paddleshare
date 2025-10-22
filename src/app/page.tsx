@@ -1,13 +1,15 @@
 
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { MotionDiv } from '@/components/client/motion-div';
+import { MotionDiv, useScroll, useTransform } from '@/components/client/motion-div';
 import { Input } from '@/components/ui/input';
+import { useRef } from 'react';
 
 const howItWorks = [
   {
@@ -57,13 +59,23 @@ const testimonials = [
 const heroImage = PlaceHolderImages.find(p => p.id === 'hero');
 
 export default function Home() {
+  const heroRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  });
+  const y = useTransform(scrollYProgress, [0, 1], ['0%', '50%']);
+
   return (
     <div className="flex flex-col min-h-dvh">
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative w-full h-[80vh] min-h-[600px] overflow-hidden">
-          <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }}>
-            {heroImage && (
+        <section ref={heroRef} className="relative w-full h-[80vh] min-h-[600px] overflow-hidden">
+          {heroImage && (
+            <MotionDiv
+              className="absolute inset-0 z-0"
+              style={{ y }}
+            >
               <Image
                 src={heroImage.imageUrl}
                 alt={heroImage.description}
@@ -72,8 +84,8 @@ export default function Home() {
                 priority
                 data-ai-hint={heroImage.imageHint}
               />
-            )}
-          </MotionDiv>
+            </MotionDiv>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
           <div className="absolute inset-0 flex items-center justify-center text-center">
             <div className="relative container px-4 sm:px-6 lg:px-8">
@@ -164,8 +176,14 @@ export default function Home() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
                   {testimonials.map((testimonial, index) => (
-                    <Card key={index} className="bg-card">
-                        <CardContent className="p-6 flex flex-col justify-between h-full">
+                    <MotionDiv 
+                        key={index} 
+                        className="bg-card p-6 flex flex-col justify-between h-full rounded-lg"
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: 0.4 + index * 0.2 }}
+                    >
                         <p className="text-muted-foreground">"{testimonial.quote}"</p>
                         <div className="mt-6 flex items-center gap-4">
                             {testimonial.avatar && (
@@ -179,8 +197,7 @@ export default function Home() {
                             <p className="text-sm text-muted-foreground">{testimonial.role}</p>
                             </div>
                         </div>
-                        </CardContent>
-                    </Card>
+                    </MotionDiv>
                   ))}
             </div>
           </div>
@@ -273,5 +290,3 @@ function UsersIcon(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
-
-    
