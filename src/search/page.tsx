@@ -291,5 +291,7 @@ export default function SearchPage() {
     // Wrap with React.Suspense to handle query param reading
     return <React.Suspense><SearchPageComponent /></React.Suspense>
 }
+    
 
+    
     
