@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useUser, useAuth } from "@/firebase";
+import { useUser, useAuth, useFirestore, useFirebaseApp } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,10 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { updateProfile } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
+import { useRef, useState } from "react";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { doc } from "firebase/firestore";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const formSchema = z.object({
   displayName: z.string().min(1, "Display name is required."),
@@ -23,7 +27,11 @@ const formSchema = z.object({
 export default function ProfilePage() {
     const { user, isUserLoading } = useUser();
     const auth = useAuth();
+    const firestore = useFirestore();
+    const firebaseApp = useFirebaseApp();
     const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -36,6 +44,10 @@ export default function ProfilePage() {
         if (!user) return;
         try {
             await updateProfile(user, { displayName: values.displayName });
+            if (firestore) {
+                const userDocRef = doc(firestore, "users", user.uid);
+                setDocumentNonBlocking(userDocRef, { displayName: values.displayName }, { merge: true });
+            }
             toast({
                 title: "Profile Updated",
                 description: "Your display name has been successfully updated.",
@@ -49,6 +61,47 @@ export default function ProfilePage() {
         }
     };
 
+    const handlePictureChangeClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!event.target.files || event.target.files.length === 0) {
+            return;
+        }
+        const file = event.target.files[0];
+        if (!user || !firebaseApp) return;
+
+        setIsUploading(true);
+
+        try {
+            const storage = getStorage(firebaseApp);
+            const pictureRef = storageRef(storage, `profile-pictures/${user.uid}`);
+            
+            await uploadBytes(pictureRef, file);
+            const downloadURL = await getDownloadURL(pictureRef);
+
+            await updateProfile(user, { photoURL: downloadURL });
+
+            if (firestore) {
+                const userDocRef = doc(firestore, "users", user.uid);
+                setDocumentNonBlocking(userDocRef, { photoURL: downloadURL }, { merge: true });
+            }
+
+            toast({
+                title: "Profile Picture Updated",
+                description: "Your new picture has been saved.",
+            });
+        } catch (error: any) {
+             toast({
+                variant: "destructive",
+                title: "Upload Failed",
+                description: error.message || "Could not upload profile picture.",
+            });
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     if (isUserLoading) {
         return (
@@ -79,7 +132,10 @@ export default function ProfilePage() {
                                     <AvatarImage src={user.photoURL ?? ""} alt={user.displayName ?? ""} />
                                     <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
                                 </Avatar>
-                                <Button variant="outline" type="button">Change Picture</Button>
+                                <Button variant="outline" type="button" onClick={handlePictureChangeClick} disabled={isUploading}>
+                                    {isUploading ? <><Loader className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : 'Change Picture'}
+                                </Button>
+                                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                             </div>
                             <FormField
                                 control={form.control}

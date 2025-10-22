@@ -10,12 +10,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useAuth } from "@/firebase";
+import { useAuth, useFirestore } from "@/firebase";
 import { GoogleAuthProvider, signInWithPopup, updateProfile } from "firebase/auth";
 import { initiateEmailSignUp } from "@/firebase/non-blocking-login";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/firebase/provider";
 import { useEffect } from "react";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { doc, serverTimestamp } from "firebase/firestore";
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Name is required." }),
@@ -35,6 +37,7 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export default function SignupPage() {
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
   const { user } = useUser();
 
@@ -49,9 +52,6 @@ export default function SignupPage() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     initiateEmailSignUp(auth, values.email, values.password);
-    if(auth.currentUser) {
-        await updateProfile(auth.currentUser, { displayName: values.name });
-    }
   };
 
   const handleGoogleSignIn = async () => {
@@ -65,9 +65,26 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (user) {
-      router.push("/dashboard");
+        if(firestore) {
+            const userDocRef = doc(firestore, 'users', user.uid);
+            const name = form.getValues("name") || user.displayName;
+            setDocumentNonBlocking(userDocRef, {
+                id: user.uid,
+                displayName: name,
+                email: user.email,
+                photoURL: user.photoURL,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        }
+
+        if(auth.currentUser && form.getValues("name")) {
+            updateProfile(auth.currentUser, { displayName: form.getValues("name") });
+        }
+
+        router.push("/dashboard");
     }
-  }, [user, router]);
+  }, [user, router, firestore, auth, form]);
 
 
   return (
