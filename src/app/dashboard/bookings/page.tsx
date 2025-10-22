@@ -74,7 +74,7 @@ function BookingItem({ booking }: { booking: Booking }) {
                     </div>
                 )}
             </CardContent>
-             {ride && (
+             {ride && booking.status === 'confirmed' && (
                 <CardFooter className="p-4 border-t flex flex-col gap-2">
                      <Button asChild className="w-full">
                         <Link href={`/dashboard/bookings/${booking.id}`}>
