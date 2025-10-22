@@ -10,13 +10,13 @@ import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
-import { collection, doc } from "firebase/firestore";
+import { collection, doc, query, where, Query } from "firebase/firestore";
 import { Ride } from "@/types/ride";
 import { User } from "@/types/user";
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useMemo, Suspense } from "react";
+import { useState, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -151,30 +151,57 @@ function SearchPageComponent() {
     const firestore = useFirestore();
     const searchParams = useSearchParams();
 
-    const ridesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return collection(firestore, "rides");
-    }, [firestore]);
-    const { data: allRides, isLoading } = useCollection<Ride>(ridesQuery);
-    
     const [from, setFrom] = useState(searchParams.get('from') || '');
     const [to, setTo] = useState(searchParams.get('to') || '');
+    const [date, setDate] = useState('');
+
+    const ridesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        
+        let q: Query<Ride> = collection(firestore, "rides") as Query<Ride>;
+
+        // This is not perfect full-text search, but it's a good start for Firestore.
+        // For true full-text search, an external service like Algolia or Typesense is recommended.
+        // We are filtering here to show the concept, but Firestore doesn't support partial string matches efficiently.
+        // A real implementation might use `==` or `>=` and `<` for prefix matching if the data is structured for it.
+        // For this demo, we fetch all and filter client-side, which is NOT scalable.
+        // The following lines are commented out as they would require specific data structuring and indexes.
+        // if (from) {
+        //     q = query(q, where("origin", ">=", from), where("origin", "<=", from + '\uf8ff'));
+        // }
+        // if (to) {
+        //     q = query(q, where("destination", ">=", to), where("destination", "<=", to + '\uf8ff'));
+        // }
+        
+        return q;
+    }, [firestore]);
+
+    const { data: allRides, isLoading } = useCollection<Ride>(ridesQuery);
 
     const filteredRides = useMemo(() => {
         if (!allRides) return [];
         return allRides.filter(ride => {
             const fromMatch = from ? ride.origin.toLowerCase().includes(from.toLowerCase()) : true;
             const toMatch = to ? ride.destination.toLowerCase().includes(to.toLowerCase()) : true;
-            return fromMatch && toMatch;
-        });
-    }, [allRides, from, to]);
+            const dateMatch = date ? new Date(ride.departureTime).toISOString().split('T')[0] === date : true;
+            
+            // Ensure ride is in the future
+            const isFutureRide = new Date(ride.departureTime) > new Date();
 
+            return fromMatch && toMatch && dateMatch && isFutureRide;
+        });
+    }, [allRides, from, to, date]);
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        // The filtering is already reactive via useMemo, but you could trigger a refetch here if queries were dynamic
+    }
 
     return (
         <div className="container py-12">
             <Card className="bg-card/60 backdrop-blur-sm border-border/20 shadow-lg mb-8">
                 <CardContent className="p-6">
-                    <form className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end" onSubmit={(e) => e.preventDefault()}>
+                    <form className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end" onSubmit={handleSearch}>
                         <div className="grid gap-2">
                             <Label htmlFor="from">From</Label>
                             <Input id="from" placeholder="e.g., New York, NY" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -185,7 +212,7 @@ function SearchPageComponent() {
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="date">Date</Label>
-                            <Input id="date" type="date" />
+                            <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
                         </div>
                         <Button type="submit" className="w-full">
                             <Search className="mr-2 h-4 w-4" />
@@ -219,11 +246,11 @@ function SearchPageComponent() {
     );
 }
 
-
+// React's Suspense for data fetching is best used with a framework like Relay or Next.js's upcoming features.
+// Since we are using a client-side hook (`useCollection`), we handle loading state explicitly inside the component.
+// Therefore, the top-level Suspense wrapper is not needed here.
 export default function SearchPage() {
-    return (
-        <Suspense fallback={<div className="flex justify-center py-12"><RideCardSkeleton /></div>}>
-            <SearchPageComponent />
-        </Suspense>
-    )
+    return <SearchPageComponent />
 }
+
+    
