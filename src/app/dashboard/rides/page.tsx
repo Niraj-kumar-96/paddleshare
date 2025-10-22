@@ -5,7 +5,7 @@ import { useCollection, useFirestore, useUser } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
 import { Ride } from "@/types/ride";
 import { collection, query, where } from "firebase/firestore";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -62,20 +62,20 @@ function RideItem({ ride }: { ride: Ride }) {
                     </div>
                 </div>
             </CardContent>
-            <div className="p-4 border-t flex flex-col gap-2">
+            <CardFooter className="p-4 border-t flex flex-col gap-2">
                  <Button asChild className="w-full relative">
                     <Link href={`/dashboard/rides/manage/${ride.id}`}>
                         Manage Ride
                         {pendingRequests > 0 && <Badge className="absolute -top-2 -right-2">{pendingRequests}</Badge>}
                     </Link>
                 </Button>
-                <div className="flex justify-end gap-2 mt-2">
-                    <Button variant="outline" size="sm" asChild>
+                <div className="flex justify-end gap-2 mt-2 w-full">
+                    <Button variant="outline" size="sm" asChild className="flex-1">
                         <Link href={`/dashboard/rides/edit/${ride.id}`}>Edit</Link>
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={handleDelete}>Delete</Button>
+                    <Button variant="destructive" size="sm" onClick={handleDelete} className="flex-1">Delete</Button>
                 </div>
-            </div>
+            </CardFooter>
         </Card>
     );
 }
