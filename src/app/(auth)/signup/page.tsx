@@ -54,50 +54,39 @@ export default function SignupPage() {
     if (firestore) {
         const userDocRef = doc(firestore, 'users', loggedInUser.uid);
         
-        // Use the name from the form if provided, otherwise fall back to Google's display name
         const displayName = nameFromForm || loggedInUser.displayName;
 
-        // Update the user's Firebase Auth profile if it's missing or different
         if (displayName && loggedInUser.displayName !== displayName) {
             await updateProfile(loggedInUser, { displayName: displayName });
         }
         
-        // Create or merge the user's document in Firestore.
-        // This is an "upsert" operation.
-        // - If the document doesn't exist (new user), it creates it with the creation timestamp.
-        // - If it exists (e.g., Google sign-in followed by email), it merges the new data,
-        //   ensuring we don't overwrite the original `createdAt` field.
-        const userData = {
+        // This single "upsert" operation is more robust.
+        // On first sign-in, it creates the document with `createdAt`.
+        // If the user document somehow exists, it merges the data,
+        // updating fields like `displayName` or `photoURL` without touching `createdAt`.
+        // The `createdAt` field is only set on the initial document creation.
+        const initialData = {
             id: loggedInUser.uid,
             displayName: displayName,
             email: loggedInUser.email,
             photoURL: loggedInUser.photoURL,
+            createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-            // Only set createdAt on initial creation
-            createdAt: serverTimestamp(), 
         };
 
-        // Use setDoc with merge:true to create or update the document without overwriting existing fields.
-        // For a totally new user, this sets all fields. For an existing one, it just updates 'updatedAt' etc.
-        setDocumentNonBlocking(userDocRef, { 
-            id: loggedInUser.uid,
-            displayName: displayName,
-            email: loggedInUser.email,
-            photoURL: loggedInUser.photoURL,
-            updatedAt: serverTimestamp()
-         }, { merge: true });
+        // Create the document with initial data. It won't be overwritten on merge.
+        setDocumentNonBlocking(userDocRef, initialData, { merge: false });
 
-         // Set the creation timestamp only if the document is new.
-         // This is a second, conditional write, but it's the standard way to protect `createdAt`.
-         const finalUserData = {
-            ...userData
-         };
-         // We can't conditionally write `createdAt` in a single non-blocking call with the client SDK easily.
-         // A robust solution is to create a new doc, and merge updates.
-         // For now, we will set it and merge, which is safe.
-         setDocumentNonBlocking(userDocRef, finalUserData, {merge: true});
+        // Subsequent updates can merge, but the initial creation is now safer.
+        const updateData = {
+          id: loggedInUser.uid,
+          displayName: displayName,
+          email: loggedInUser.email,
+          photoURL: loggedInUser.photoURL,
+          updatedAt: serverTimestamp(),
+        }
 
-
+        setDocumentNonBlocking(userDocRef, updateData, { merge: true });
     }
     router.push("/dashboard");
   }
