@@ -44,7 +44,9 @@ function RideItem({ ride }: { ride: Ride }) {
                     </div>
                 </div>
                 <div className="flex justify-end gap-2 mt-4">
-                    <Button variant="outline" size="sm">Edit</Button>
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href={`/dashboard/rides/edit/${ride.id}`}>Edit</Link>
+                    </Button>
                     <Button variant="destructive" size="sm" onClick={handleDelete}>Delete</Button>
                 </div>
             </CardContent>
@@ -96,4 +98,3 @@ export default function RidesPage() {
         </div>
     );
 }
-

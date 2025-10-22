@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -10,20 +11,16 @@
           "type": "string",
           "description": "Unique identifier for the User entity."
         },
-        "firstName": {
+        "displayName": {
           "type": "string",
-          "description": "The first name of the user."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "The last name of the user."
+          "description": "The display name of the user."
         },
         "email": {
           "type": "string",
           "description": "The email address of the user.",
           "format": "email"
         },
-        "profilePicture": {
+        "photoURL": {
           "type": "string",
           "description": "URL to the user's profile picture.",
           "format": "uri"
@@ -41,8 +38,7 @@
       },
       "required": [
         "id",
-        "firstName",
-        "lastName",
+        "displayName",
         "email"
       ]
     },
@@ -80,6 +76,10 @@
         "availableSeats": {
           "type": "number",
           "description": "The number of seats available in the ride."
+        },
+        "details": {
+          "type": "string",
+          "description": "Optional details about the ride."
         },
         "createdAt": {
           "type": "string",

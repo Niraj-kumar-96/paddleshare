@@ -6,6 +6,7 @@ export type Ride = {
     departureTime: string;
     fare: number;
     availableSeats: number;
+    details?: string;
     createdAt: string;
     updatedAt: string;
 };
