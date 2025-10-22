@@ -196,71 +196,38 @@ function SearchPageComponent() {
     const searchParams = useSearchParams();
     const router = useRouter();
 
-    const [from, setFrom] = useState(searchParams.get('from') || 'San Francisco, CA');
+    const [from, setFrom] = useState(searchParams.get('from') || '');
     const [to, setTo] = useState(searchParams.get('to') || '');
     const [date, setDate] = useState(searchParams.get('date') ||'');
-
-    useEffect(() => {
-        const createTestRide = async () => {
-            if (!firestore) return;
-
-            const testRideId = "test-ride-for-booking";
-            const rideRef = doc(firestore, "rides", testRideId);
-            const rideDoc = await getDoc(rideRef);
-
-            if (!rideDoc.exists()) {
-                const testDriverId = "test-driver-user";
-                const userRef = doc(firestore, "users", testDriverId);
-                const userDoc = await getDoc(userRef);
-
-                if (!userDoc.exists()) {
-                    setDocumentNonBlocking(userRef, {
-                        id: testDriverId,
-                        displayName: "Test Driver",
-                        email: "driver@test.com",
-                        createdAt: serverTimestamp(),
-                        updatedAt: serverTimestamp()
-                    });
-                }
-                
-                const tomorrow = new Date();
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                tomorrow.setHours(10, 0, 0, 0);
-
-                setDocumentNonBlocking(rideRef, {
-                    driverId: testDriverId,
-                    origin: "San Francisco, CA",
-                    destination: "Los Angeles, CA",
-                    departureTime: tomorrow.toISOString(),
-                    availableSeats: 2,
-                    fare: 50,
-                    details: "This is a test ride for booking purposes. Feel free to book it!",
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                });
-            }
-        };
-        createTestRide();
-    }, [firestore]);
 
     const ridesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         
-        return query(collection(firestore, "rides"), where("departureTime", ">=", new Date().toISOString()));
-    }, [firestore]);
+        let q: Query = collection(firestore, "rides");
+
+        if (from) {
+            // This is a simple substring search. For more complex queries, you would need a search service like Algolia.
+            q = query(q, where("origin", ">=", from), where("origin", "<=", from + '\uf8ff'));
+        }
+        if (to) {
+            q = query(q, where("destination", ">=", to), where("destination", "<=", to + '\uf8ff'));
+        }
+        
+        // Filter for rides that have not departed yet
+        q = query(q, where("departureTime", ">=", new Date().toISOString()));
+
+        return q;
+    }, [firestore, from, to]);
 
     const { data: allRides, isLoading } = useCollection<Ride>(ridesQuery);
 
     const filteredRides = useMemo(() => {
         if (!allRides) return [];
         return allRides.filter(ride => {
-            const fromMatch = from ? ride.origin.toLowerCase().includes(from.toLowerCase()) : true;
-            const toMatch = to ? ride.destination.toLowerCase().includes(to.toLowerCase()) : true;
             const dateMatch = date ? new Date(ride.departureTime).toISOString().split('T')[0] === date : true;
-            
-            return fromMatch && toMatch && dateMatch;
+            return dateMatch;
         });
-    }, [allRides, from, to, date]);
+    }, [allRides, date]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -324,5 +291,6 @@ export default function SearchPage() {
     // Wrap with React.Suspense to handle query param reading
     return <React.Suspense><SearchPageComponent /></React.Suspense>
 }
+    
 
     
