@@ -5,11 +5,11 @@ import { useCollection, useFirestore, useUser } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
 import { Booking } from "@/types/booking";
 import { collection, query, where } from "firebase/firestore";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Ride } from "@/types/ride";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { doc } from "firebase/firestore";
-import { Loader } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function BookingItem({ booking }: { booking: Booking }) {
     const firestore = useFirestore();
@@ -23,7 +23,16 @@ function BookingItem({ booking }: { booking: Booking }) {
     return (
         <Card className="bg-card/80">
             <CardContent className="p-4">
-                {isLoading && <Loader className="animate-spin" />}
+                {isLoading && (
+                    <div className="space-y-2">
+                        <Skeleton className="h-6 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                        <div className="flex justify-between items-center mt-2">
+                           <Skeleton className="h-5 w-1/4" />
+                           <Skeleton className="h-5 w-1/4" />
+                        </div>
+                    </div>
+                )}
                 {ride && (
                     <div>
                         <p className="font-bold text-lg">{ride.origin} to {ride.destination}</p>
@@ -36,6 +45,21 @@ function BookingItem({ booking }: { booking: Booking }) {
                         </div>
                     </div>
                 )}
+            </CardContent>
+        </Card>
+    );
+}
+
+function BookingSkeleton() {
+    return (
+        <Card className="bg-card/80">
+            <CardContent className="p-4 space-y-2">
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <div className="flex justify-between items-center mt-2">
+                    <Skeleton className="h-5 w-1/4" />
+                    <Skeleton className="h-5 w-1/4" />
+                </div>
             </CardContent>
         </Card>
     );
@@ -59,8 +83,8 @@ export default function BookingsPage() {
             <p className="text-muted-foreground mb-8">All the trips you have booked as a passenger.</p>
 
             {isLoading && (
-                <div className="flex justify-center">
-                    <Loader className="animate-spin" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     {[...Array(3)].map((_, i) => <BookingSkeleton key={i} />)}
                 </div>
             )}
             

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { collection, query, where } from "firebase/firestore";
 import { useMemoFirebase } from "@/firebase/provider";
 import { Ride } from "@/types/ride";
 import { Booking } from "@/types/booking";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
     const { user } = useUser();
@@ -24,15 +26,58 @@ export default function DashboardPage() {
         return query(collection(firestore, "bookings"), where("passengerId", "==", user.uid));
     }, [firestore, user]);
 
-    const { data: driverRides } = useCollection<Ride>(driverRidesQuery);
-    const { data: passengerBookings } = useCollection<Booking>(passengerBookingsQuery);
+    const { data: driverRides, isLoading: isLoadingRides } = useCollection<Ride>(driverRidesQuery);
+    const { data: passengerBookings, isLoading: isLoadingBookings } = useCollection<Booking>(passengerBookingsQuery);
 
     const totalEarnings = useMemoFirebase(() => {
-        // This is a placeholder calculation. In a real app, you'd likely want to
-        // sum fares from completed rides where bookings were confirmed.
         return driverRides?.reduce((acc, ride) => acc + ride.fare, 0) || 0;
     }, [driverRides]);
     
+    const isLoading = isLoadingRides || isLoadingBookings;
+
+    const StatsSkeleton = () => (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-5 w-3/5" />
+                    <Skeleton className="h-4 w-2/5" />
+                </CardHeader>
+                <CardContent>
+                    <Skeleton className="h-10 w-1/4" />
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-5 w-3/5" />
+                    <Skeleton className="h-4 w-2/5" />
+                </CardHeader>
+                <CardContent>
+                    <Skeleton className="h-10 w-1/4" />
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-5 w-3/5" />
+                    <Skeleton className="h-4 w-2/5" />
+                </CardHeader>
+                <CardContent>
+                    <Skeleton className="h-10 w-1/4" />
+                </CardContent>
+            </Card>
+        </div>
+    );
+
+    const ListSkeleton = () => (
+        <ul className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+                <li key={i} className="border-b pb-2 space-y-2">
+                    <Skeleton className="h-5 w-4/5" />
+                    <Skeleton className="h-4 w-1/2" />
+                </li>
+            ))}
+        </ul>
+    );
+
 
     return (
         <div>
@@ -49,35 +94,38 @@ export default function DashboardPage() {
                 </Button>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Upcoming Rides</CardTitle>
-                        <CardDescription>As a driver</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-4xl font-bold">{driverRides?.length || 0}</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Upcoming Trips</CardTitle>
-                        <CardDescription>As a passenger</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-4xl font-bold">{passengerBookings?.length || 0}</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Total Earnings</CardTitle>
-                        <CardDescription>This month</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-4xl font-bold">${totalEarnings.toFixed(2)}</p>
-                    </CardContent>
-                </Card>
-            </div>
+            {isLoading ? <StatsSkeleton /> : (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Upcoming Rides</CardTitle>
+                            <CardDescription>As a driver</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-4xl font-bold">{driverRides?.length || 0}</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Upcoming Trips</CardTitle>
+                            <CardDescription>As a passenger</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-4xl font-bold">{passengerBookings?.length || 0}</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Total Earnings</CardTitle>
+                            <CardDescription>This month</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-4xl font-bold">${totalEarnings.toFixed(2)}</p>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
 
             <div className="grid gap-6 md:grid-cols-2">
                 <Card>
@@ -86,19 +134,21 @@ export default function DashboardPage() {
                         <CardDescription>Rides you are currently offering.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {driverRides && driverRides.length > 0 ? (
-                            <ul className="space-y-4">
-                                {driverRides.slice(0, 5).map(ride => (
-                                    <li key={ride.id} className="border-b pb-2">
-                                        <p className="font-semibold">{ride.origin} to {ride.destination}</p>
-                                        <p className="text-sm text-muted-foreground">
-                                            {new Date(ride.departureTime).toLocaleString()}
-                                        </p>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p>You have not offered any rides yet.</p>
+                        {isLoading ? <ListSkeleton /> : (
+                            driverRides && driverRides.length > 0 ? (
+                                <ul className="space-y-4">
+                                    {driverRides.slice(0, 5).map(ride => (
+                                        <li key={ride.id} className="border-b pb-2">
+                                            <p className="font-semibold">{ride.origin} to {ride.destination}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {new Date(ride.departureTime).toLocaleString()}
+                                            </p>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p>You have not offered any rides yet.</p>
+                            )
                         )}
                         <Button variant="outline" asChild className="mt-4">
                             <Link href="/dashboard/rides">View All My Rides</Link>
@@ -111,17 +161,19 @@ export default function DashboardPage() {
                         <CardDescription>Your upcoming trips as a passenger.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {passengerBookings && passengerBookings.length > 0 ? (
-                             <ul className="space-y-4">
-                                {passengerBookings.slice(0, 5).map(booking => (
-                                    <li key={booking.id} className="border-b pb-2">
-                                        <p className="font-semibold">Booking for ride ID: {booking.rideId.substring(0,6)}...</p>
-                                        <p className="text-sm text-muted-foreground">Seats: {booking.numberOfSeats}</p>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p>You have not booked any trips yet.</p>
+                        {isLoading ? <ListSkeleton /> : (
+                             passengerBookings && passengerBookings.length > 0 ? (
+                                 <ul className="space-y-4">
+                                    {passengerBookings.slice(0, 5).map(booking => (
+                                        <li key={booking.id} className="border-b pb-2">
+                                            <p className="font-semibold">Booking for ride ID: {booking.rideId.substring(0,6)}...</p>
+                                            <p className="text-sm text-muted-foreground">Seats: {booking.numberOfSeats}</p>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p>You have not booked any trips yet.</p>
+                            )
                         )}
                          <Button variant="outline" asChild className="mt-4">
                             <Link href="/dashboard/bookings">View All My Bookings</Link>

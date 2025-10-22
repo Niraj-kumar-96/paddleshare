@@ -5,13 +5,14 @@ import { useCollection, useFirestore, useUser } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
 import { Ride } from "@/types/ride";
 import { collection, query, where } from "firebase/firestore";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader, Car } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 function RideItem({ ride }: { ride: Ride }) {
@@ -54,6 +55,29 @@ function RideItem({ ride }: { ride: Ride }) {
     );
 }
 
+function RideSkeleton() {
+    return (
+        <Card className="bg-card/80">
+            <CardContent className="p-4 space-y-4">
+                <div className="flex justify-between">
+                    <div className="space-y-2">
+                        <Skeleton className="h-6 w-48" />
+                        <Skeleton className="h-4 w-64" />
+                    </div>
+                    <div className="text-right space-y-2">
+                        <Skeleton className="h-6 w-12" />
+                        <Skeleton className="h-4 w-20" />
+                    </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-8 w-16" />
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+
 
 export default function RidesPage() {
     const { user } = useUser();
@@ -72,8 +96,8 @@ export default function RidesPage() {
             <p className="text-muted-foreground mb-8">Manage the rides you are offering to passengers.</p>
 
             {isLoading && (
-                <div className="flex justify-center">
-                    <Loader className="animate-spin" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(3)].map((_, i) => <RideSkeleton key={i} />)}
                 </div>
             )}
             

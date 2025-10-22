@@ -1,23 +1,24 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Calendar, Car, Clock, Users, Wallet, Loader, Search } from "lucide-react";
+import { ArrowRight, Calendar, Car, Clock, Users, Search } from "lucide-react";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
-import { collection, serverTimestamp, doc } from "firebase/firestore";
+import { collection, doc } from "firebase/firestore";
 import { Ride } from "@/types/ride";
 import { User } from "@/types/user";
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { useState, useMemo, Suspense } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function RideCard({ ride }: { ride: Ride }) {
     const firestore = useFirestore();
@@ -30,9 +31,9 @@ function RideCard({ ride }: { ride: Ride }) {
         return doc(firestore, 'users', ride.driverId);
     }, [firestore, ride.driverId]);
 
-    const { data: driver } = useDoc<User>(driverRef);
+    const { data: driver, isLoading: isLoadingDriver } = useDoc<User>(driverRef);
 
-    const rideImage = PlaceHolderImages[Math.floor(Math.random() * 4)]; // Use a random image for now
+    const rideImage = PlaceHolderImages[Math.floor(Math.random() * 4)];
 
     const handleBooking = () => {
         if (!user) {
@@ -46,7 +47,7 @@ function RideCard({ ride }: { ride: Ride }) {
             rideId: ride.id,
             passengerId: user.uid,
             bookingTime: new Date().toISOString(),
-            numberOfSeats: 1, // Default to 1 seat for now
+            numberOfSeats: 1, 
             status: "confirmed",
         }).then(() => {
             toast({
@@ -90,17 +91,56 @@ function RideCard({ ride }: { ride: Ride }) {
                 </div>
                 <div className="flex justify-between items-center mt-6 pt-4 border-t">
                     <div className="flex items-center gap-2">
-                        <Avatar>
-                            <AvatarImage src={driver?.photoURL ?? ""} alt={driver?.displayName ?? ""} />
-                            <AvatarFallback>{driver?.displayName?.charAt(0) ?? 'D'}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium">{driver?.displayName ?? "Driver"}</span>
+                        {isLoadingDriver ? (
+                            <>
+                                <Skeleton className="h-10 w-10 rounded-full" />
+                                <Skeleton className="h-5 w-24" />
+                            </>
+                        ) : (
+                            <>
+                                <Avatar>
+                                    <AvatarImage src={driver?.photoURL ?? ""} alt={driver?.displayName ?? ""} />
+                                    <AvatarFallback>{driver?.displayName?.charAt(0) ?? 'D'}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium">{driver?.displayName ?? "Driver"}</span>
+                            </>
+                        )}
                     </div>
                     {user?.uid !== ride.driverId ? (
                         <Button onClick={handleBooking}>Book Seat</Button>
                     ) : (
                          <Button disabled>Your Ride</Button>
                     )}
+                </div>
+            </div>
+        </Card>
+    );
+}
+
+function RideCardSkeleton() {
+    return (
+        <Card className="bg-card/60 backdrop-blur-sm border-border/20 shadow-lg flex flex-col md:flex-row">
+            <div className="md:w-1/3 relative h-48 md:h-auto">
+                <Skeleton className="h-full w-full rounded-t-lg md:rounded-l-lg md:rounded-tr-none" />
+            </div>
+            <div className="p-6 flex-1 flex flex-col justify-between">
+                <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                        <Skeleton className="h-7 w-2/3" />
+                        <Skeleton className="h-8 w-1/4 mt-2 sm:mt-0" />
+                    </div>
+                    <div className="flex flex-wrap gap-x-6 gap-y-2">
+                        <Skeleton className="h-5 w-24" />
+                        <Skeleton className="h-5 w-28" />
+                        <Skeleton className="h-5 w-32" />
+                    </div>
+                </div>
+                <div className="flex justify-between items-center mt-6 pt-4 border-t">
+                    <div className="flex items-center gap-2">
+                        <Skeleton className="h-10 w-10 rounded-full" />
+                        <Skeleton className="h-5 w-24" />
+                    </div>
+                    <Skeleton className="h-10 w-28" />
                 </div>
             </div>
         </Card>
@@ -158,8 +198,8 @@ function SearchPageComponent() {
             <div>
                 <h2 className="text-2xl font-headline font-bold mb-4">Available Rides</h2>
                 {isLoading && (
-                    <div className="flex justify-center py-12">
-                        <Loader className="animate-spin h-8 w-8" />
+                    <div className="grid gap-6">
+                        {[...Array(3)].map((_, i) => <RideCardSkeleton key={i} />)}
                     </div>
                 )}
                 {!isLoading && filteredRides.length === 0 && (
@@ -170,7 +210,7 @@ function SearchPageComponent() {
                     </div>
                 )}
                 <div className="grid gap-6">
-                    {filteredRides.map((ride) => (
+                    {!isLoading && filteredRides.map((ride) => (
                        <RideCard key={ride.id} ride={ride} />
                     ))}
                 </div>
@@ -182,7 +222,7 @@ function SearchPageComponent() {
 
 export default function SearchPage() {
     return (
-        <Suspense fallback={<div className="flex justify-center py-12"><Loader className="animate-spin h-8 w-8" /></div>}>
+        <Suspense fallback={<div className="flex justify-center py-12"><RideCardSkeleton /></div>}>
             <SearchPageComponent />
         </Suspense>
     )
