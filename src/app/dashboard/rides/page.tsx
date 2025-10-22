@@ -13,11 +13,28 @@ import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Booking } from "@/types/booking";
+import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
 
 
 function RideItem({ ride }: { ride: Ride }) {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const [pendingRequests, setPendingRequests] = useState(0);
+
+    const bookingsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, "bookings"), where("rideId", "==", ride.id), where("status", "==", "pending"));
+    }, [firestore, ride.id]);
+
+    const { data: pendingBookings } = useCollection<Booking>(bookingsQuery);
+
+    useEffect(() => {
+        if(pendingBookings) {
+            setPendingRequests(pendingBookings.length);
+        }
+    }, [pendingBookings]);
 
     const handleDelete = () => {
         if (!firestore) return;
@@ -30,8 +47,8 @@ function RideItem({ ride }: { ride: Ride }) {
     };
 
     return (
-        <Card className="bg-card/80">
-            <CardContent className="p-4">
+        <Card className="bg-card/80 flex flex-col">
+            <CardContent className="p-4 flex-1">
                 <div className="flex justify-between">
                     <div>
                         <p className="font-bold text-lg">{ride.origin} to {ride.destination}</p>
@@ -44,13 +61,21 @@ function RideItem({ ride }: { ride: Ride }) {
                         <p className="text-muted-foreground text-sm">{ride.availableSeats} seats</p>
                     </div>
                 </div>
-                <div className="flex justify-end gap-2 mt-4">
+            </CardContent>
+            <div className="p-4 border-t flex flex-col gap-2">
+                 <Button asChild className="w-full relative">
+                    <Link href={`/dashboard/rides/manage/${ride.id}`}>
+                        Manage Ride
+                        {pendingRequests > 0 && <Badge className="absolute -top-2 -right-2">{pendingRequests}</Badge>}
+                    </Link>
+                </Button>
+                <div className="flex justify-end gap-2 mt-2">
                     <Button variant="outline" size="sm" asChild>
                         <Link href={`/dashboard/rides/edit/${ride.id}`}>Edit</Link>
                     </Button>
                     <Button variant="destructive" size="sm" onClick={handleDelete}>Delete</Button>
                 </div>
-            </CardContent>
+            </div>
         </Card>
     );
 }

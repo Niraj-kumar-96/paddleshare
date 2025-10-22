@@ -4,5 +4,5 @@ export type Booking = {
     passengerId: string;
     bookingTime: string;
     numberOfSeats: number;
-    status: 'pending' | 'confirmed' | 'cancelled';
+    status: 'pending' | 'confirmed' | 'cancelled' | 'declined';
 };
