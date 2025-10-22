@@ -2,7 +2,7 @@
 
 import { useCollection, useFirestore, useUser } from "@/firebase";
 import { Booking } from "@/types/booking";
-import { collection, query, where, doc, getDocs, orderBy, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, query, where, doc, getDocs, orderBy, deleteDoc, updateDoc, runTransaction } from "firebase/firestore";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Ride } from "@/types/ride";
 import { useDoc } from "@/firebase/firestore/use-doc";
@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { MessageSquare, Star, CreditCard, XCircle } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,7 +21,7 @@ function BookingItem({ booking }: { booking: Booking }) {
     const { user } = useUser();
     const { toast } = useToast();
 
-    const { data: ride, isLoading } = useDoc<Ride>(`rides/${booking.rideId}`);
+    const { data: ride, isLoading } = useDoc<Ride>(booking ? `rides/${booking.rideId}` : null);
 
     useEffect(() => {
         const checkReview = async () => {
@@ -44,34 +44,65 @@ function BookingItem({ booking }: { booking: Booking }) {
 
     const handleCancelBooking = async () => {
         if (!firestore || !ride) return;
+
         const bookingRef = doc(firestore, 'bookings', booking.id);
         const rideRef = doc(firestore, 'rides', ride.id);
         
         try {
-            await updateDoc(bookingRef, { status: 'cancelled' });
-            // This is a simplification. A real app would need a transaction
-            // to ensure this is safe, especially if multiple people cancel at once.
-            if(booking.status === 'confirmed') {
-                 await updateDoc(rideRef, {
-                    availableSeats: ride.availableSeats + booking.numberOfSeats
-                 });
-            }
+            await runTransaction(firestore, async (transaction) => {
+                const rideDoc = await transaction.get(rideRef);
+                if (!rideDoc.exists()) {
+                    throw new Error("This ride no longer exists.");
+                }
+
+                const currentRideData = rideDoc.data() as Ride;
+
+                // Update the booking status to 'cancelled'
+                transaction.update(bookingRef, { status: 'cancelled' });
+                
+                // If the booking was confirmed, we need to add the seats back to the ride.
+                if (booking.status === 'confirmed') {
+                    transaction.update(rideRef, {
+                        availableSeats: currentRideData.availableSeats + booking.numberOfSeats
+                    });
+                }
+            });
+
             toast({
                 title: "Booking Cancelled",
                 description: "Your booking has been successfully cancelled."
             });
+
         } catch (error: any) {
+            console.error("Cancellation Error: ", error);
             toast({
                 variant: 'destructive',
                 title: 'Cancellation Failed',
-                description: error.message || "Could not cancel your booking."
+                description: error.message || "Could not cancel your booking. Please try again."
             })
         }
     }
 
+    const handleDeleteRequest = () => {
+        if (!firestore) return;
+        const bookingRef = doc(firestore, 'bookings', booking.id);
+        deleteDoc(bookingRef).then(() => {
+             toast({
+                title: "Request Withdrawn",
+                description: "Your booking request has been withdrawn."
+            });
+        }).catch(error => {
+             toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: error.message || "Could not withdraw your request."
+            });
+        })
+    }
+
 
     const isRidePast = ride ? new Date(ride.departureTime) < new Date() : false;
-    const canCancel = !isRidePast && booking.status !== 'cancelled';
+    const canCancel = !isRidePast && (booking.status === 'confirmed' || booking.status === 'pending');
     const totalFare = ride ? (ride.fare * booking.numberOfSeats).toFixed(2) : '0.00';
 
     return (
@@ -92,7 +123,7 @@ function BookingItem({ booking }: { booking: Booking }) {
                         <div className="flex justify-between items-start">
                             <p className="font-bold text-lg">{ride.origin} to {ride.destination}</p>
                              <Badge 
-                                variant={booking.status === 'confirmed' ? 'default' : (booking.status === 'cancelled' ? 'secondary' : 'destructive')} 
+                                variant={booking.status === 'confirmed' ? 'default' : (booking.status === 'cancelled' || booking.status === 'declined' ? 'destructive' : 'secondary')} 
                                 className="capitalize"
                             >
                                 {booking.status}
@@ -110,8 +141,14 @@ function BookingItem({ booking }: { booking: Booking }) {
             </CardContent>
              {ride && (
                 <CardFooter className="p-4 border-t flex flex-col gap-2">
-                     {booking.status === 'pending' && (
-                        <p className="text-sm text-muted-foreground text-center w-full">Waiting for driver approval...</p>
+                     {booking.status === 'pending' && !isRidePast && (
+                        <>
+                            <p className="text-sm text-muted-foreground text-center w-full">Waiting for driver approval...</p>
+                            <Button variant="destructive" className="w-full" onClick={handleDeleteRequest}>
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Withdraw Request
+                            </Button>
+                        </>
                      )}
 
                      {booking.status === 'confirmed' && booking.paymentStatus === 'pending' && !isRidePast && (
@@ -123,7 +160,7 @@ function BookingItem({ booking }: { booking: Booking }) {
                         </Button>
                      )}
 
-                     {booking.status === 'confirmed' && booking.paymentStatus === 'paid' && (
+                     {booking.status === 'confirmed' && booking.paymentStatus === 'paid' && !isRidePast && (
                         <>
                              <Button asChild className="w-full">
                                 <Link href={`/dashboard/bookings/${booking.id}`}>
@@ -131,18 +168,20 @@ function BookingItem({ booking }: { booking: Booking }) {
                                     View Chat
                                 </Link>
                             </Button>
-                            {isRidePast && !hasReviewed && (
-                                <Button asChild variant="outline" className="w-full">
-                                    <Link href={`/dashboard/review/${booking.id}`}>
-                                        <Star className="mr-2 h-4 w-4" />
-                                        Leave a Review
-                                    </Link>
-                                </Button>
-                            )}
                         </>
                      )}
 
-                     {canCancel && (
+                    {isRidePast && booking.paymentStatus === 'paid' && !hasReviewed && (
+                        <Button asChild variant="outline" className="w-full">
+                            <Link href={`/dashboard/review/${booking.id}`}>
+                                <Star className="mr-2 h-4 w-4" />
+                                Leave a Review
+                            </Link>
+                        </Button>
+                    )}
+
+
+                     {canCancel && booking.status === 'confirmed' && (
                         <Button variant="destructive" className="w-full" onClick={handleCancelBooking}>
                             <XCircle className="mr-2 h-4 w-4" />
                             Cancel Booking
@@ -178,8 +217,10 @@ export default function BookingsPage() {
     
     const { data: passengerBookings, isLoading } = useCollection<Booking>(
         user ? 'bookings' : null,
-        where("passengerId", "==", user?.uid ?? ' '), 
-        orderBy("bookingTime", "desc")
+        [
+            where("passengerId", "==", user?.uid ?? ' '), 
+            orderBy("bookingTime", "desc")
+        ]
     );
 
     return (
@@ -194,7 +235,13 @@ export default function BookingsPage() {
             )}
             
             {!isLoading && (!passengerBookings || passengerBookings.length === 0) && (
-                <p>You have not booked any trips yet.</p>
+                <div className="text-center py-12 border rounded-lg bg-card/10">
+                    <h3 className="mt-4 text-lg font-medium">No trips booked yet</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">Find a ride and start your journey!</p>
+                    <Button asChild className="mt-6">
+                        <Link href="/search">Find a Ride</Link>
+                    </Button>
+                </div>
             )}
 
             {passengerBookings && passengerBookings.length > 0 && (
