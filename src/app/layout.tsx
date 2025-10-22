@@ -7,6 +7,7 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
+import WithHeader from "@/components/with-header";
 
 export const metadata: Metadata = {
   title: "PaddleShare - Share your ride. Save money. Save the planet.",
@@ -38,7 +39,9 @@ export default function RootLayout({
         >
           <FirebaseClientProvider>
             <div className="relative flex min-h-dvh flex-col">
-              <Header />
+              <WithHeader>
+                <Header />
+              </WithHeader>
               <main className="flex-1">{children}</main>
               <Footer />
             </div>

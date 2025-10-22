@@ -1,15 +1,77 @@
+'use client';
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle } from "lucide-react";
 import Link from "next/link";
+import { useCollection, useFirestore, useUser } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
+import { useMemoFirebase } from "@/firebase/provider";
+import { Ride } from "@/types/ride";
+import { Booking } from "@/types/booking";
+
+function RideList({ rides }: { rides: Ride[] | null }) {
+    if (!rides || rides.length === 0) {
+        return <p>No rides found.</p>;
+    }
+    return (
+        <ul>
+            {rides.map(ride => (
+                <li key={ride.id} className="border-b py-2">
+                    <p className="font-semibold">{ride.origin} to {ride.destination}</p>
+                    <p className="text-sm text-muted-foreground">
+                        {new Date(ride.departureTime).toLocaleString()}
+                    </p>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+function BookingList({ bookings }: { bookings: Booking[] | null }) {
+    if (!bookings || bookings.length === 0) {
+        return <p>No bookings found.</p>;
+    }
+    return (
+        <ul>
+            {bookings.map(booking => (
+                <li key={booking.id} className="border-b py-2">
+                    <p>Booking for ride {booking.rideId}</p>
+                    <p className="text-sm text-muted-foreground">Seats: {booking.numberOfSeats}</p>
+                </li>
+            ))}
+        </ul>
+    );
+}
 
 export default function DashboardPage() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+
+    const driverRidesQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return query(collection(firestore, "rides"), where("driverId", "==", user.uid));
+    }, [firestore, user]);
+
+    const passengerBookingsQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return query(collection(firestore, "bookings"), where("passengerId", "==", user.uid));
+    }, [firestore, user]);
+
+    const { data: driverRides } = useCollection<Ride>(driverRidesQuery);
+    const { data: passengerBookings } = useCollection<Booking>(passengerBookingsQuery);
+
+    const totalEarnings = useMemoFirebase(() => {
+        return driverRides?.reduce((acc, ride) => acc + ride.fare, 0) || 0;
+    }, [driverRides]);
+    
+
     return (
         <div>
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-3xl font-headline font-bold">Welcome, User!</h1>
+                    <h1 className="text-3xl font-headline font-bold">Welcome, {user?.displayName || 'User'}!</h1>
                     <p className="text-muted-foreground">Here's what's happening with your rides.</p>
                 </div>
                 <Button asChild>
@@ -27,7 +89,7 @@ export default function DashboardPage() {
                         <CardDescription>As a driver</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-4xl font-bold">2</p>
+                        <p className="text-4xl font-bold">{driverRides?.length || 0}</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -36,7 +98,7 @@ export default function DashboardPage() {
                         <CardDescription>As a passenger</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-4xl font-bold">1</p>
+                        <p className="text-4xl font-bold">{passengerBookings?.length || 0}</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -45,7 +107,7 @@ export default function DashboardPage() {
                         <CardDescription>This month</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-4xl font-bold">$125</p>
+                        <p className="text-4xl font-bold">${totalEarnings.toFixed(2)}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -61,8 +123,7 @@ export default function DashboardPage() {
                             <CardTitle>Upcoming Rides You're Driving</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p>You have an upcoming ride from New York to Boston tomorrow.</p>
-                            <p className="mt-2">Another ride from New York to Philadelphia next week.</p>
+                            <RideList rides={driverRides} />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -72,7 +133,7 @@ export default function DashboardPage() {
                             <CardTitle>Upcoming Trips You've Booked</CardTitle>
                         </CardHeader>
                         <CardContent>
-                             <p>You have an upcoming trip from Brooklyn to Queens this Friday.</p>
+                             <BookingList bookings={passengerBookings} />
                         </CardContent>
                     </Card>
                 </TabsContent>
