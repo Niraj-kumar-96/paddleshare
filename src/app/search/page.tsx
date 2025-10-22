@@ -10,7 +10,7 @@ import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
-import { collection, doc, query, Query, where } from "firebase/firestore";
+import { collection, doc, query, Query, where, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { Ride } from "@/types/ride";
 import { User } from "@/types/user";
 import { Review } from "@/types/review";
@@ -196,17 +196,56 @@ function SearchPageComponent() {
     const searchParams = useSearchParams();
     const router = useRouter();
 
-    const [from, setFrom] = useState(searchParams.get('from') || '');
+    const [from, setFrom] = useState(searchParams.get('from') || 'San Francisco, CA');
     const [to, setTo] = useState(searchParams.get('to') || '');
     const [date, setDate] = useState(searchParams.get('date') ||'');
+
+    useEffect(() => {
+        const createTestRide = async () => {
+            if (!firestore) return;
+
+            const testRideId = "test-ride-for-booking";
+            const rideRef = doc(firestore, "rides", testRideId);
+            const rideDoc = await getDoc(rideRef);
+
+            if (!rideDoc.exists()) {
+                const testDriverId = "test-driver-user";
+                const userRef = doc(firestore, "users", testDriverId);
+                const userDoc = await getDoc(userRef);
+
+                if (!userDoc.exists()) {
+                    await setDoc(userRef, {
+                        id: testDriverId,
+                        displayName: "Test Driver",
+                        email: "driver@test.com",
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp()
+                    });
+                }
+                
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setHours(10, 0, 0, 0);
+
+                await setDoc(rideRef, {
+                    driverId: testDriverId,
+                    origin: "San Francisco, CA",
+                    destination: "Los Angeles, CA",
+                    departureTime: tomorrow.toISOString(),
+                    availableSeats: 2,
+                    fare: 50,
+                    details: "This is a test ride for booking purposes. Feel free to book it!",
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                });
+            }
+        };
+        createTestRide();
+    }, [firestore]);
 
     const ridesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         
-        // Firestore doesn't support case-insensitive `includes` queries.
-        // For a production app, a search service like Algolia or Typesense would be used.
-        // Here, we fetch all future rides and filter client-side as a demonstration.
-        // This is not scalable.
         return query(collection(firestore, "rides"), where("departureTime", ">=", new Date().toISOString()));
     }, [firestore]);
 
