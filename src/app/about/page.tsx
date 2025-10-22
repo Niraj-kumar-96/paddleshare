@@ -1,3 +1,4 @@
+
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
@@ -69,7 +70,8 @@ export default function AboutPage() {
                 <MotionDiv
                     key={value.title}
                     initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
                     transition={{ duration: 0.5, delay: 0.4 + index * 0.2 }}
                     className="flex flex-col items-center p-6 rounded-lg bg-card shadow-lg"
                 >

@@ -19,8 +19,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MotionDiv } from "@/components/client/motion-div";
 
-function RideCard({ ride }: { ride: Ride }) {
+function RideCard({ ride, index }: { ride: Ride, index: number }) {
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
@@ -59,61 +60,67 @@ function RideCard({ ride }: { ride: Ride }) {
     };
 
     return (
-        <Card className="bg-card/60 backdrop-blur-sm border-border/20 shadow-lg hover:shadow-primary/10 transition-shadow duration-300 flex flex-col md:flex-row">
-            {rideImage && (
-                <div className="md:w-1/3 relative h-48 md:h-auto">
-                    <Image
-                        src={rideImage.imageUrl}
-                        alt={rideImage.description}
-                        fill
-                        className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none"
-                        data-ai-hint={rideImage.imageHint}
-                    />
-                </div>
-            )}
-            <div className="p-6 flex-1 flex flex-col justify-between">
-                <div>
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                        <div className="flex items-center gap-2 text-xl font-bold font-headline">
-                            <span>{ride.origin}</span>
-                            <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                            <span>{ride.destination}</span>
+        <MotionDiv
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: index * 0.1 }}
+        >
+            <Card className="bg-card/60 backdrop-blur-sm border-border/20 shadow-lg hover:shadow-primary/10 transition-shadow duration-300 flex flex-col md:flex-row">
+                {rideImage && (
+                    <div className="md:w-1/3 relative h-48 md:h-auto">
+                        <Image
+                            src={rideImage.imageUrl}
+                            alt={rideImage.description}
+                            fill
+                            className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none"
+                            data-ai-hint={rideImage.imageHint}
+                        />
+                    </div>
+                )}
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                    <div>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                            <div className="flex items-center gap-2 text-xl font-bold font-headline">
+                                <span>{ride.origin}</span>
+                                <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                                <span>{ride.destination}</span>
+                            </div>
+                            <div className="text-2xl font-bold text-primary mt-2 sm:mt-0">
+                                ${ride.fare}
+                            </div>
                         </div>
-                        <div className="text-2xl font-bold text-primary mt-2 sm:mt-0">
-                            ${ride.fare}
+                        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground mt-4">
+                            <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> {new Date(ride.departureTime).toLocaleTimeString()}</div>
+                            <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> {new Date(ride.departureTime).toLocaleDateString()}</div>
+                            <div className="flex items-center gap-2"><Users className="h-4 w-4" /> {ride.availableSeats} seats available</div>
                         </div>
                     </div>
-                    <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground mt-4">
-                        <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> {new Date(ride.departureTime).toLocaleTimeString()}</div>
-                        <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> {new Date(ride.departureTime).toLocaleDateString()}</div>
-                        <div className="flex items-center gap-2"><Users className="h-4 w-4" /> {ride.availableSeats} seats available</div>
-                    </div>
-                </div>
-                <div className="flex justify-between items-center mt-6 pt-4 border-t">
-                    <div className="flex items-center gap-2">
-                        {isLoadingDriver ? (
-                            <>
-                                <Skeleton className="h-10 w-10 rounded-full" />
-                                <Skeleton className="h-5 w-24" />
-                            </>
+                    <div className="flex justify-between items-center mt-6 pt-4 border-t">
+                        <div className="flex items-center gap-2">
+                            {isLoadingDriver ? (
+                                <>
+                                    <Skeleton className="h-10 w-10 rounded-full" />
+                                    <Skeleton className="h-5 w-24" />
+                                </>
+                            ) : (
+                                <>
+                                    <Avatar>
+                                        <AvatarImage src={driver?.photoURL ?? ""} alt={driver?.displayName ?? ""} />
+                                        <AvatarFallback>{driver?.displayName?.charAt(0) ?? 'D'}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="font-medium">{driver?.displayName ?? "Driver"}</span>
+                                </>
+                            )}
+                        </div>
+                        {user?.uid !== ride.driverId ? (
+                            <Button onClick={handleBooking}>Book Seat</Button>
                         ) : (
-                            <>
-                                <Avatar>
-                                    <AvatarImage src={driver?.photoURL ?? ""} alt={driver?.displayName ?? ""} />
-                                    <AvatarFallback>{driver?.displayName?.charAt(0) ?? 'D'}</AvatarFallback>
-                                </Avatar>
-                                <span className="font-medium">{driver?.displayName ?? "Driver"}</span>
-                            </>
+                            <Button disabled>Your Ride</Button>
                         )}
                     </div>
-                    {user?.uid !== ride.driverId ? (
-                        <Button onClick={handleBooking}>Book Seat</Button>
-                    ) : (
-                         <Button disabled>Your Ride</Button>
-                    )}
                 </div>
-            </div>
-        </Card>
+            </Card>
+        </MotionDiv>
     );
 }
 
@@ -237,8 +244,8 @@ function SearchPageComponent() {
                     </div>
                 )}
                 <div className="grid gap-6">
-                    {!isLoading && filteredRides.map((ride) => (
-                       <RideCard key={ride.id} ride={ride} />
+                    {!isLoading && filteredRides.map((ride, index) => (
+                       <RideCard key={ride.id} ride={ride} index={index} />
                     ))}
                 </div>
             </div>
