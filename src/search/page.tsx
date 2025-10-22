@@ -80,23 +80,16 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
             router.push('/login?redirect=/search');
             return;
         }
-        if (!firestore) return;
-
-        const bookingsCollection = collection(firestore, "bookings");
-        addDocumentNonBlocking(bookingsCollection, {
-            rideId: ride.id,
-            passengerId: user.uid,
-            bookingTime: new Date().toISOString(),
-            numberOfSeats: 1, 
-            status: "pending",
-            paymentStatus: 'pending'
-        }).then(() => {
+        if (ride.availableSeats < 1) {
             toast({
-                title: "Booking Requested!",
-                description: "The driver has been notified of your request.",
+                variant: 'destructive',
+                title: 'Booking Failed',
+                description: 'Sorry, there are no available seats for this ride.'
             });
-            router.push("/dashboard/bookings");
-        });
+            return;
+        }
+        // Navigate to checkout page instead of creating a pending booking
+        router.push(`/dashboard/checkout/${ride.id}`);
     };
 
     return (
@@ -159,7 +152,9 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
                             ) : null}
                         </div>
                         {user?.uid !== ride.driverId ? (
-                            <Button onClick={handleBooking}>Request to Book</Button>
+                             <Button onClick={handleBooking} disabled={ride.availableSeats < 1}>
+                                {ride.availableSeats > 0 ? 'Book Now' : 'Full'}
+                            </Button>
                         ) : (
                             <Button disabled>Your Ride</Button>
                         )}
@@ -300,4 +295,11 @@ export default function SearchPage() {
     // Wrap with React.Suspense to handle query param reading
     return <React.Suspense><SearchPageComponent /></React.Suspense>
 }
+    
+
+    
+    
+
+    
+
     

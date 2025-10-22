@@ -5,6 +5,8 @@ export type Booking = {
     passengerId: string;
     bookingTime: string;
     numberOfSeats: number;
-    status: 'pending' | 'confirmed' | 'cancelled' | 'declined';
-    paymentStatus: 'pending' | 'paid' | 'refunded';
+    status: 'confirmed' | 'cancelled';
+    paymentStatus: 'paid' | 'refunded';
 };
+
+    

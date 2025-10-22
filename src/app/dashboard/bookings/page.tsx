@@ -52,19 +52,6 @@ function BookingItem({ booking }: { booking: Booking }) {
 
     const isRidePast = ride ? new Date(ride.departureTime) < new Date() : false;
 
-    const handleCancelRequest = async () => {
-        if (!firestore) return;
-        const confirmation = confirm("Are you sure you want to cancel this booking request?");
-        if (confirmation) {
-            const bookingRef = doc(firestore, "bookings", booking.id);
-            await deleteDoc(bookingRef);
-            toast({
-                title: "Request Cancelled",
-                description: "Your booking request has been successfully cancelled.",
-            });
-        }
-    };
-
     return (
         <Card className="bg-card/80 flex flex-col">
             <CardContent className="p-4 flex-1">
@@ -82,7 +69,7 @@ function BookingItem({ booking }: { booking: Booking }) {
                     <div>
                         <div className="flex justify-between items-start">
                             <p className="font-bold text-lg">{ride.origin} to {ride.destination}</p>
-                             <Badge variant={booking.status === 'confirmed' ? 'default' : booking.status === 'declined' ? 'destructive' : 'secondary'} className="capitalize">{booking.status}</Badge>
+                             <Badge variant={booking.status === 'confirmed' ? 'default' : 'destructive'} className="capitalize">{booking.status}</Badge>
                         </div>
                         <p className="text-muted-foreground text-sm">
                             On: {new Date(ride.departureTime).toLocaleDateString()} at {new Date(ride.departureTime).toLocaleTimeString()}
@@ -96,20 +83,6 @@ function BookingItem({ booking }: { booking: Booking }) {
             </CardContent>
              {ride && (
                 <CardFooter className="p-4 border-t flex flex-col gap-2">
-                    {booking.status === 'pending' && !isRidePast && (
-                        <Button variant="destructive" className="w-full" onClick={handleCancelRequest}>
-                            <XCircle className="mr-2 h-4 w-4" />
-                            Cancel Request
-                        </Button>
-                    )}
-                     {booking.status === 'confirmed' && booking.paymentStatus === 'pending' && !isRidePast && (
-                        <Button asChild className="w-full">
-                            <Link href={`/dashboard/checkout/${booking.id}`}>
-                                <CreditCard className="mr-2 h-4 w-4" />
-                                Pay Now
-                            </Link>
-                        </Button>
-                     )}
                      {booking.status === 'confirmed' && booking.paymentStatus === 'paid' && (
                         <>
                              <Button asChild className="w-full">

@@ -21,7 +21,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { CreditCard, MessageSquare } from "lucide-react";
 import React from 'react';
 
-function BookingRequestCard({ booking, ride }: { booking: Booking, ride: Ride }) {
+function ConfirmedBookingCard({ booking, ride }: { booking: Booking, ride: Ride }) {
     const firestore = useFirestore();
     const { toast } = useToast();
 
@@ -31,43 +31,6 @@ function BookingRequestCard({ booking, ride }: { booking: Booking, ride: Ride })
     }, [firestore, booking.passengerId]);
     const { data: passenger, isLoading } = useDoc<User>(passengerRef);
 
-    const handleUpdateStatus = async (status: 'confirmed' | 'declined') => {
-        if (!firestore) return;
-
-        if (status === 'confirmed') {
-             if (ride.availableSeats < booking.numberOfSeats) {
-                toast({
-                    variant: "destructive",
-                    title: "Approval Failed",
-                    description: "Not enough available seats to approve this request.",
-                });
-                return;
-            }
-
-            const batch = writeBatch(firestore);
-            
-            const bookingRef = doc(firestore, 'bookings', booking.id);
-            batch.update(bookingRef, { status: 'confirmed' });
-
-            const rideRef = doc(firestore, 'rides', ride.id);
-            batch.update(rideRef, { 
-                availableSeats: ride.availableSeats - booking.numberOfSeats,
-                passengers: [...(ride.passengers || []), booking.passengerId]
-            });
-            
-            await batch.commit();
-
-        } else {
-            // For declining, we just update the booking status.
-            const bookingRef = doc(firestore, 'bookings', booking.id);
-            updateDocumentNonBlocking(bookingRef, { status });
-        }
-
-        toast({
-            title: `Booking ${status}`,
-            description: `The booking request has been ${status}.`
-        });
-    };
     
     if (isLoading) {
         return (
@@ -75,10 +38,6 @@ function BookingRequestCard({ booking, ride }: { booking: Booking, ride: Ride })
                 <div className="flex items-center gap-4">
                     <Skeleton className="h-10 w-10 rounded-full" />
                     <Skeleton className="h-5 w-24" />
-                </div>
-                <div className="flex gap-2">
-                    <Skeleton className="h-9 w-20" />
-                    <Skeleton className="h-9 w-20" />
                 </div>
             </div>
         )
@@ -97,12 +56,10 @@ function BookingRequestCard({ booking, ride }: { booking: Booking, ride: Ride })
                         </Avatar>
                         <div className="group-hover:underline">
                             <p className="font-semibold">{passenger.displayName}</p>
-                            <p className="text-sm text-muted-foreground">{booking.numberOfSeats} seat(s) requested</p>
+                            <p className="text-sm text-muted-foreground">{booking.numberOfSeats} seat(s) booked</p>
                         </div>
                     </Link>
-                    {booking.status !== 'pending' && (
-                        <Badge variant={booking.status === 'confirmed' ? 'default' : booking.status === 'declined' ? 'destructive' : 'secondary'} className="capitalize">{booking.status}</Badge>
-                    )}
+                    <Badge variant={'default'} className="capitalize">{booking.status}</Badge>
                 </div>
                 {booking.status === 'confirmed' && (
                     <div className="pl-14 mt-2 space-y-2">
@@ -126,13 +83,6 @@ function BookingRequestCard({ booking, ride }: { booking: Booking, ride: Ride })
                     </div>
                 )}
             </div>
-
-            {booking.status === 'pending' && (
-                <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleUpdateStatus('confirmed')}>Approve</Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleUpdateStatus('declined')}>Decline</Button>
-                </div>
-            )}
         </div>
     )
 }
@@ -151,12 +101,9 @@ function ManageRidePageContent() {
 
     const bookingsQuery = useMemoFirebase(() => {
         if (!firestore || !rideId) return null;
-        return query(collection(firestore, 'bookings'), where('rideId', '==', rideId));
+        return query(collection(firestore, 'bookings'), where('rideId', '==', rideId), where('status', '==', 'confirmed'));
     }, [firestore, rideId]);
     const { data: bookings, isLoading: isLoadingBookings } = useCollection<Booking>(bookingsQuery);
-
-    const pendingBookings = React.useMemo(() => bookings?.filter(b => b.status === 'pending') || [], [bookings]);
-    const otherBookings = React.useMemo(() => bookings?.filter(b => b.status !== 'pending') || [], [bookings]);
 
     const isLoading = isUserLoading || isLoadingRide || isLoadingBookings;
 
@@ -187,32 +134,18 @@ function ManageRidePageContent() {
     return (
         <div>
             <h1 className="text-3xl font-headline font-bold mb-2">Manage Ride</h1>
-            <p className="text-muted-foreground mb-8">Review booking requests for your ride from {ride.origin} to {ride.destination}.</p>
+            <p className="text-muted-foreground mb-8">Review confirmed passengers for your ride from {ride.origin} to {ride.destination}.</p>
             
-            <Card className="mb-8">
-                <CardHeader>
-                    <CardTitle>Pending Requests</CardTitle>
-                    <CardDescription>Accept or decline requests from passengers.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {pendingBookings.length > 0 ? (
-                        pendingBookings.map(booking => <BookingRequestCard key={booking.id} booking={booking} ride={ride} />)
-                    ) : (
-                        <p className="text-muted-foreground">No pending requests.</p>
-                    )}
-                </CardContent>
-            </Card>
-
             <Card>
                 <CardHeader>
-                    <CardTitle>Booking History</CardTitle>
-                    <CardDescription>A list of all other bookings for this ride.</CardDescription>
+                    <CardTitle>Confirmed Passengers</CardTitle>
+                    <CardDescription>A list of passengers who have booked and paid for this ride.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {otherBookings.length > 0 ? (
-                         otherBookings.map(booking => <BookingRequestCard key={booking.id} booking={booking} ride={ride}/>)
+                    {bookings && bookings.length > 0 ? (
+                        bookings.map(booking => <ConfirmedBookingCard key={booking.id} booking={booking} ride={ride} />)
                     ) : (
-                        <p className="text-muted-foreground">No other bookings found.</p>
+                        <p className="text-muted-foreground">No passengers have booked this ride yet.</p>
                     )}
                 </CardContent>
             </Card>
@@ -228,3 +161,5 @@ export default function ManageRidePage() {
         </ProtectedRoute>
     )
 }
+
+    

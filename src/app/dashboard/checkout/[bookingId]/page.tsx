@@ -6,16 +6,15 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useDoc, useFirestore } from '@/firebase';
-import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useDoc, useFirestore, useUser } from '@/firebase';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useMemoFirebase } from '@/firebase/provider';
 import { STRIPE_PUBLISHABLE_KEY } from '@/app/config';
 import { useToast } from '@/hooks/use-toast';
-import { Booking } from '@/types/booking';
 import { Ride } from '@/types/ride';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js';
-import { doc } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { ArrowLeft, Loader } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -23,21 +22,20 @@ import React, { useEffect, useState } from 'react';
 
 const stripePromise = STRIPE_PUBLISHABLE_KEY ? loadStripe(STRIPE_PUBLISHABLE_KEY) : null;
 
-function CheckoutForm({ booking, ride }: { booking: Booking; ride: Ride }) {
+function CheckoutForm({ ride }: { ride: Ride }) {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
-
+  const { user } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!stripe || !elements) {
-      // Stripe.js has not yet loaded.
+    if (!stripe || !elements || !firestore || !user) {
       return;
     }
 
@@ -50,13 +48,17 @@ function CheckoutForm({ booking, ride }: { booking: Booking; ride: Ride }) {
       setIsLoading(false);
       return;
     }
-    
-    // Create the PaymentIntent and obtain clientSecret
-    const { clientSecret } = await createPaymentIntent({
-      bookingId: booking.id,
-      amount: ride.fare * booking.numberOfSeats,
-    });
 
+    const { clientSecret, paymentIntentId } = await createPaymentIntent({
+      bookingId: 'temp', // This will be replaced by the actual bookingId after creation
+      amount: ride.fare * 1, // Assuming 1 seat for now
+    });
+    
+    if(!clientSecret){
+        setErrorMessage('Could not create payment intent. Please try again.');
+        setIsLoading(false);
+        return;
+    }
 
     const { error } = await stripe.confirmPayment({
       elements,
@@ -64,17 +66,32 @@ function CheckoutForm({ booking, ride }: { booking: Booking; ride: Ride }) {
       confirmParams: {
         return_url: `${window.location.origin}/dashboard/bookings`,
       },
-      redirect: 'if_required', // Important to handle success manually
+      redirect: 'if_required', 
     });
 
     if (error) {
       setErrorMessage(error.message || 'An unexpected error occurred.');
     } else {
-      // Payment successful
-      if (firestore) {
-        const bookingRef = doc(firestore, 'bookings', booking.id);
-        updateDocumentNonBlocking(bookingRef, { paymentStatus: 'paid' });
-      }
+      const batch = writeBatch(firestore);
+
+      const bookingRef = doc(collection(firestore, 'bookings'));
+      batch.set(bookingRef, {
+        rideId: ride.id,
+        passengerId: user.uid,
+        bookingTime: serverTimestamp(),
+        numberOfSeats: 1,
+        status: 'confirmed',
+        paymentStatus: 'paid',
+      });
+      
+      const rideRef = doc(firestore, 'rides', ride.id);
+      batch.update(rideRef, {
+        availableSeats: ride.availableSeats - 1,
+        passengers: [...(ride.passengers || []), user.uid],
+      });
+      
+      await batch.commit();
+
       toast({
         title: 'Payment Successful!',
         description: 'Your ride is confirmed. Enjoy the trip!',
@@ -90,7 +107,7 @@ function CheckoutForm({ booking, ride }: { booking: Booking; ride: Ride }) {
         <PaymentElement />
         <Button disabled={isLoading || !stripe || !elements} className="w-full mt-6" size="lg">
             {isLoading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isLoading ? 'Processing...' : `Pay $${(ride.fare * booking.numberOfSeats).toFixed(2)}`}
+            {isLoading ? 'Processing...' : `Pay $${(ride.fare * 1).toFixed(2)}`}
         </Button>
         {errorMessage && <div className="mt-4 text-sm text-destructive">{errorMessage}</div>}
     </form>
@@ -99,28 +116,22 @@ function CheckoutForm({ booking, ride }: { booking: Booking; ride: Ride }) {
 
 function CheckoutPageContent() {
   const params = useParams();
-  const bookingId = params.bookingId as string;
+  const rideId = params.bookingId as string; // It's actually rideId
   const firestore = useFirestore();
   
   const [options, setOptions] = useState<StripeElementsOptions | null>(null);
 
-  const bookingRef = useMemoFirebase(() => {
-    if (!firestore || !bookingId) return null;
-    return doc(firestore, 'bookings', bookingId);
-  }, [firestore, bookingId]);
-  const { data: booking, isLoading: isLoadingBooking } = useDoc<Booking>(bookingRef);
-
   const rideRef = useMemoFirebase(() => {
-    if (!firestore || !booking) return null;
-    return doc(firestore, 'rides', booking.rideId);
-  }, [firestore, booking]);
+    if (!firestore || !rideId) return null;
+    return doc(firestore, 'rides', rideId);
+  }, [firestore, rideId]);
   const { data: ride, isLoading: isLoadingRide } = useDoc<Ride>(rideRef);
 
   useEffect(() => {
-    if (booking && ride && booking.paymentStatus === 'pending') {
+    if (ride) {
         createPaymentIntent({ 
-            bookingId: booking.id, 
-            amount: ride.fare * booking.numberOfSeats 
+            bookingId: 'temp', 
+            amount: ride.fare * 1 
         }).then(({ clientSecret }) => {
             setOptions({
                 clientSecret,
@@ -130,9 +141,9 @@ function CheckoutPageContent() {
             console.error("Error creating payment intent:", error);
         });
     }
-  }, [booking, ride]);
+  }, [ride]);
   
-  const isLoading = isLoadingBooking || isLoadingRide;
+  const isLoading = isLoadingRide;
 
   if (isLoading) {
     return (
@@ -152,21 +163,21 @@ function CheckoutPageContent() {
     )
   }
 
-  if (!booking || !ride) {
-    return <p>Booking not found.</p>
+  if (!ride) {
+    return <p>Ride not found.</p>
   }
   
-  if (booking.paymentStatus === 'paid') {
+  if (ride.availableSeats < 1) {
       return (
           <div className="max-w-md mx-auto text-center">
               <Card>
                   <CardHeader>
-                      <CardTitle>Payment Complete</CardTitle>
+                      <CardTitle>Ride is Full</CardTitle>
                   </CardHeader>
                   <CardContent>
-                      <p>This booking has already been paid for.</p>
+                      <p>This ride is no longer available.</p>
                        <Button asChild className="mt-4">
-                           <Link href="/dashboard/bookings">Return to My Trips</Link>
+                           <Link href="/search">Find another ride</Link>
                        </Button>
                   </CardContent>
               </Card>
@@ -176,19 +187,19 @@ function CheckoutPageContent() {
 
   return (
     <div className="max-w-md mx-auto">
-        <Link href="/dashboard/bookings" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
+        <Link href={`/search`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
             <ArrowLeft className="h-4 w-4" />
-            Back to Bookings
+            Back to Search
         </Link>
         <Card>
             <CardHeader>
-                <CardTitle className="font-headline text-2xl">Complete Your Payment</CardTitle>
+                <CardTitle className="font-headline text-2xl">Complete Your Booking</CardTitle>
                 <CardDescription>Securely pay for your ride from {ride.origin} to {ride.destination}.</CardDescription>
             </CardHeader>
             <CardContent>
                 {options && stripePromise && (
                     <Elements stripe={stripePromise} options={options}>
-                        <CheckoutForm booking={booking} ride={ride}/>
+                        <CheckoutForm ride={ride}/>
                     </Elements>
                 )}
                 {!options && <div className="flex justify-center p-8"><Loader className="animate-spin" /></div>}
@@ -207,3 +218,5 @@ export default function CheckoutPage() {
         </ProtectedRoute>
     )
 }
+
+    

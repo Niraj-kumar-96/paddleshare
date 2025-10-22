@@ -19,20 +19,16 @@ import { useEffect, useState } from "react";
 function RideItem({ ride }: { ride: Ride }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const [pendingRequests, setPendingRequests] = useState(0);
-
-    const bookingsQuery = useMemoFirebase(() => {
+    
+    const confirmedBookingsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
-        return query(collection(firestore, "bookings"), where("rideId", "==", ride.id), where("status", "==", "pending"));
+        return query(collection(firestore, "bookings"), where("rideId", "==", ride.id), where("status", "==", "confirmed"));
     }, [firestore, ride.id]);
 
-    const { data: pendingBookings } = useCollection<Booking>(bookingsQuery);
+    const { data: confirmedBookings } = useCollection<Booking>(confirmedBookingsQuery);
+    
+    const passengerCount = confirmedBookings?.length || 0;
 
-    useEffect(() => {
-        if(pendingBookings) {
-            setPendingRequests(pendingBookings.length);
-        }
-    }, [pendingBookings]);
 
     const handleDelete = async () => {
         if (!firestore) return;
@@ -45,7 +41,7 @@ function RideItem({ ride }: { ride: Ride }) {
             toast({
                 variant: "destructive",
                 title: "Deletion Failed",
-                description: "Cannot delete a ride that has active or pending bookings. Please resolve all bookings first.",
+                description: "Cannot delete a ride that has active bookings. Please contact support to resolve.",
             });
             return;
         }
@@ -78,7 +74,7 @@ function RideItem({ ride }: { ride: Ride }) {
                     </div>
                     <div className="text-right">
                         <p className="font-bold text-lg">${ride.fare}</p>
-                        <p className="text-muted-foreground text-sm">{ride.availableSeats} seats</p>
+                        <p className="text-muted-foreground text-sm">{ride.availableSeats} seats left</p>
                     </div>
                 </div>
             </CardContent>
@@ -86,7 +82,7 @@ function RideItem({ ride }: { ride: Ride }) {
                  <Button asChild className="w-full relative">
                     <Link href={`/dashboard/rides/manage/${ride.id}`}>
                         Manage Ride
-                        {pendingRequests > 0 && <Badge className="absolute -top-2 -right-2">{pendingRequests}</Badge>}
+                        {passengerCount > 0 && <Badge className="absolute -top-2 -right-2">{passengerCount}</Badge>}
                     </Link>
                 </Button>
                 <div className="flex justify-end gap-2 mt-2 w-full">
@@ -167,3 +163,5 @@ export default function RidesPage() {
         </div>
     );
 }
+
+    
