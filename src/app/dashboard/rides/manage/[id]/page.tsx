@@ -8,7 +8,7 @@ import { Booking } from "@/types/booking";
 import { User } from "@/types/user";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useParams } from "next/navigation";
-import { collection, doc, query, where } from "firebase/firestore";
+import { collection, doc, query, where, writeBatch } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,10 +31,38 @@ function BookingRequestCard({ booking, ride }: { booking: Booking, ride: Ride })
     }, [firestore, booking.passengerId]);
     const { data: passenger, isLoading } = useDoc<User>(passengerRef);
 
-    const handleUpdateStatus = (status: 'confirmed' | 'declined') => {
+    const handleUpdateStatus = async (status: 'confirmed' | 'declined') => {
         if (!firestore) return;
-        const bookingRef = doc(firestore, 'bookings', booking.id);
-        updateDocumentNonBlocking(bookingRef, { status });
+
+        if (status === 'confirmed') {
+             if (ride.availableSeats < booking.numberOfSeats) {
+                toast({
+                    variant: "destructive",
+                    title: "Approval Failed",
+                    description: "Not enough available seats to approve this request.",
+                });
+                return;
+            }
+
+            const batch = writeBatch(firestore);
+            
+            const bookingRef = doc(firestore, 'bookings', booking.id);
+            batch.update(bookingRef, { status: 'confirmed' });
+
+            const rideRef = doc(firestore, 'rides', ride.id);
+            batch.update(rideRef, { 
+                availableSeats: ride.availableSeats - booking.numberOfSeats,
+                passengers: [...(ride.passengers || []), booking.passengerId]
+            });
+            
+            await batch.commit();
+
+        } else {
+            // For declining, we just update the booking status.
+            const bookingRef = doc(firestore, 'bookings', booking.id);
+            updateDocumentNonBlocking(bookingRef, { status });
+        }
+
         toast({
             title: `Booking ${status}`,
             description: `The booking request has been ${status}.`

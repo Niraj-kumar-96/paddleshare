@@ -69,6 +69,7 @@ function OfferRidePageContent() {
             departureTime: departureTimestamp,
             availableSeats: values.availableSeats,
             fare: values.fare,
+            passengers: [],
             details: values.details,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),

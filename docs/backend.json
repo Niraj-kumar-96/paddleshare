@@ -77,6 +77,13 @@
           "type": "number",
           "description": "The number of seats available in the ride."
         },
+        "passengers": {
+          "type": "array",
+          "description": "A list of passenger user IDs who are confirmed for the ride.",
+          "items": {
+            "type": "string"
+          }
+        },
         "details": {
           "type": "string",
           "description": "Optional details about the ride."
