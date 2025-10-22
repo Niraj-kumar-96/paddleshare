@@ -4,8 +4,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Logo } from "@/components/logo";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -17,6 +15,7 @@ import { useUser } from "@/firebase/provider";
 import { useEffect } from "react";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { doc, serverTimestamp, getDoc } from "firebase/firestore";
+import { Logo } from "@/components/logo";
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Name is required." }),
@@ -58,7 +57,7 @@ export default function SignupPage() {
         if (!userDoc.exists()) {
             const name = nameFromForm || loggedInUser.displayName;
             
-            if (loggedInUser.displayName !== name) {
+            if (!loggedInUser.displayName || (nameFromForm && loggedInUser.displayName !== nameFromForm)) {
                 await updateProfile(loggedInUser, { displayName: name });
             }
 

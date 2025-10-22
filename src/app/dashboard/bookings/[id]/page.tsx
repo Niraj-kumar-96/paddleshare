@@ -24,6 +24,8 @@ function ChatMessage({ message, sender }: { message: Message, sender?: User | nu
     const { user } = useUser();
     const isCurrentUser = message.senderId === user?.uid;
     
+    const timestamp = message.timestamp ? new Date(message.timestamp) : new Date();
+    
     return (
          <div className={cn("flex items-end gap-2", isCurrentUser ? "justify-end" : "justify-start")}>
             {!isCurrentUser && (
@@ -38,7 +40,7 @@ function ChatMessage({ message, sender }: { message: Message, sender?: User | nu
             )}>
                 <p className="text-sm">{message.text}</p>
                  <p className="text-xs mt-1 text-right opacity-70">
-                    {new Date(message.timestamp).toLocaleTimeString()}
+                    {timestamp.toLocaleTimeString()}
                 </p>
             </div>
          </div>
@@ -48,7 +50,7 @@ function ChatMessage({ message, sender }: { message: Message, sender?: User | nu
 function ChatPage() {
     const params = useParams();
     const bookingId = params.id as string;
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const [newMessage, setNewMessage] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -64,27 +66,30 @@ function ChatPage() {
         return doc(firestore, 'rides', booking.rideId);
     }, [firestore, booking]);
     const { data: ride, isLoading: isLoadingRide } = useDoc<Ride>(rideRef);
-
+    
+    // Authorization check before fetching other data
+    const isUserInvolved = user?.uid === booking?.passengerId || user?.uid === ride?.driverId;
+    
     const otherUserRef = useMemoFirebase(() => {
-        if(!firestore || !ride || !user) return null;
+        if(!firestore || !ride || !user || !booking || !isUserInvolved) return null;
         const otherUserId = ride.driverId === user.uid ? booking.passengerId : ride.driverId;
         return doc(firestore, 'users', otherUserId);
-    }, [firestore, ride, user, booking]);
+    }, [firestore, ride, user, booking, isUserInvolved]);
 
     const { data: otherUser } = useDoc<User>(otherUserRef);
 
     const messagesRef = useMemoFirebase(() => {
-        if (!bookingRef) return null;
+        if (!bookingRef || !isUserInvolved) return null;
         return query(collection(bookingRef, 'messages'), orderBy('timestamp', 'asc'));
-    }, [bookingRef]);
+    }, [bookingRef, isUserInvolved]);
 
     const { data: messages, isLoading: isLoadingMessages } = useCollection<Message>(messagesRef);
 
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newMessage.trim() || !user || !messagesRef) return;
+        if (!newMessage.trim() || !user || !firestore || !isUserInvolved) return;
         
-        addDocumentNonBlocking(collection(firestore!, 'bookings', bookingId, 'messages'), {
+        addDocumentNonBlocking(collection(firestore, 'bookings', bookingId, 'messages'), {
             senderId: user.uid,
             text: newMessage,
             timestamp: serverTimestamp(),
@@ -97,7 +102,7 @@ function ChatPage() {
     }, [messages]);
 
 
-    const isLoading = isLoadingBooking || isLoadingRide;
+    const isLoading = isUserLoading || isLoadingBooking || isLoadingRide;
 
     if (isLoading) {
         return (
@@ -116,16 +121,13 @@ function ChatPage() {
         )
     }
 
-    if (!booking || !ride) {
-        return <p>Booking not found.</p>
-    }
-    
-    // Authorization
-    const isUserInvolved = user?.uid === booking.passengerId || user?.uid === ride.driverId;
     if (!isUserInvolved) {
         return <p>You are not authorized to view this chat.</p>
     }
-
+    
+    if (!booking || !ride) {
+        return <p>Booking not found.</p>
+    }
 
     return (
         <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto">
