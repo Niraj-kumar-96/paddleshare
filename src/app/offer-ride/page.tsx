@@ -16,11 +16,18 @@ import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { MotionDiv } from "@/components/client/motion-div";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
 
 const formSchema = z.object({
   origin: z.string().min(1, "Origin is required."),
   destination: z.string().min(1, "Destination is required."),
-  departureDate: z.string().min(1, "Date is required."),
+  departureDate: z.date({
+    required_error: "A date of departure is required.",
+  }),
   departureTime: z.string().min(1, "Time is required."),
   availableSeats: z.coerce.number().min(1, "At least one seat must be available."),
   fare: z.coerce.number().min(0, "Price must be a positive number."),
@@ -39,7 +46,6 @@ function OfferRidePageContent() {
         defaultValues: {
             origin: "",
             destination: "",
-            departureDate: "",
             departureTime: "",
             availableSeats: 1,
             fare: 20,
@@ -49,8 +55,11 @@ function OfferRidePageContent() {
 
     const onSubmit = (values: z.infer<typeof formSchema>) => {
         if (!firestore || !user) return;
+        
+        const date = values.departureDate;
+        const [hours, minutes] = values.departureTime.split(':').map(Number);
+        const departureTimestamp = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes).toISOString();
 
-        const departureTimestamp = new Date(`${values.departureDate}T${values.departureTime}`).toISOString();
         const ridesCollection = collection(firestore, "rides");
         
         addDocumentNonBlocking(ridesCollection, {
@@ -131,17 +140,45 @@ function OfferRidePageContent() {
                             <CardContent>
                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <FormField
-                                        control={form.control}
-                                        name="departureDate"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Date</FormLabel>
-                                                <FormControl>
-                                                    <Input type="date" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
+                                    control={form.control}
+                                    name="departureDate"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                        <FormLabel>Date</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "w-full pl-3 text-left font-normal",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                                >
+                                                {field.value ? (
+                                                    format(field.value, "PPP")
+                                                ) : (
+                                                    <span>Pick a date</span>
+                                                )}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={field.value}
+                                                onSelect={field.onChange}
+                                                disabled={(date) =>
+                                                    date < new Date(new Date().setHours(0,0,0,0))
+                                                }
+                                                initialFocus
+                                            />
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
                                     />
                                     <FormField
                                         control={form.control}

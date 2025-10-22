@@ -17,14 +17,19 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Ride } from "@/types/ride";
 import { useMemoFirebase } from "@/firebase/provider";
-import { Loader } from "lucide-react";
+import { CalendarIcon, Loader } from "lucide-react";
 import { useEffect } from "react";
 import { format } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   origin: z.string().min(1, "Origin is required."),
   destination: z.string().min(1, "Destination is required."),
-  departureDate: z.string().min(1, "Date is required."),
+  departureDate: z.date({
+    required_error: "A date of departure is required.",
+  }),
   departureTime: z.string().min(1, "Time is required."),
   availableSeats: z.coerce.number().min(1, "At least one seat must be available."),
   fare: z.coerce.number().min(0, "Price must be a positive number."),
@@ -49,7 +54,6 @@ function EditRidePageContent({ params }: { params: { id: string } }) {
         defaultValues: {
             origin: "",
             destination: "",
-            departureDate: "",
             departureTime: "",
             availableSeats: 1,
             fare: 20,
@@ -63,7 +67,7 @@ function EditRidePageContent({ params }: { params: { id: string } }) {
             form.reset({
                 origin: ride.origin,
                 destination: ride.destination,
-                departureDate: format(departure, 'yyyy-MM-dd'),
+                departureDate: departure,
                 departureTime: format(departure, 'HH:mm'),
                 availableSeats: ride.availableSeats,
                 fare: ride.fare,
@@ -75,8 +79,11 @@ function EditRidePageContent({ params }: { params: { id: string } }) {
 
     const onSubmit = (values: z.infer<typeof formSchema>) => {
         if (!firestore || !user || !ride) return;
+        
+        const date = values.departureDate;
+        const [hours, minutes] = values.departureTime.split(':').map(Number);
+        const departureTimestamp = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes).toISOString();
 
-        const departureTimestamp = new Date(`${values.departureDate}T${values.departureTime}`).toISOString();
         const rideDocRef = doc(firestore, "rides", ride.id);
         
         updateDocumentNonBlocking(rideDocRef, {
@@ -103,7 +110,6 @@ function EditRidePageContent({ params }: { params: { id: string } }) {
         return <p>Ride not found.</p>;
     }
     
-    // Authorization check
     if (ride.driverId !== user?.uid) {
         return <p>You are not authorized to edit this ride.</p>
     }
@@ -155,12 +161,40 @@ function EditRidePageContent({ params }: { params: { id: string } }) {
                                     control={form.control}
                                     name="departureDate"
                                     render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Date</FormLabel>
+                                        <FormItem className="flex flex-col">
+                                        <FormLabel>Date</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
                                             <FormControl>
-                                                <Input type="date" {...field} />
+                                                <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "w-full pl-3 text-left font-normal",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                                >
+                                                {field.value ? (
+                                                    format(field.value, "PPP")
+                                                ) : (
+                                                    <span>Pick a date</span>
+                                                )}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
                                             </FormControl>
-                                            <FormMessage />
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={field.value}
+                                                onSelect={field.onChange}
+                                                disabled={(date) =>
+                                                    date < new Date(new Date().setHours(0,0,0,0))
+                                                }
+                                                initialFocus
+                                            />
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
                                         </FormItem>
                                     )}
                                 />
