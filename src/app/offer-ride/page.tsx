@@ -73,53 +73,63 @@ function OfferRidePageContent() {
     };
 
     return (
-        <div className="container py-12 md:py-24 flex justify-center">
-            <MotionDiv
+        <div className="container py-12 md:py-16">
+             <MotionDiv
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="w-full max-w-3xl"
+                className="max-w-3xl mx-auto"
             >
-                <Card className="bg-card/60 backdrop-blur-sm border-border/20 shadow-2xl shadow-primary/10">
-                    <CardHeader className="text-center">
-                        <CardTitle className="text-3xl font-headline tracking-tighter sm:text-4xl">Offer a Ride</CardTitle>
-                        <CardDescription className="text-muted-foreground md:text-xl">
-                            Share your journey and earn money. Fill out the details below.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="origin"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Origin</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="e.g., New York, NY" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="destination"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Destination</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="e.g., Boston, MA" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
+                <div className="text-center mb-12">
+                    <h1 className="text-3xl font-headline tracking-tighter sm:text-4xl md:text-5xl">Offer a Ride</h1>
+                    <p className="text-muted-foreground md:text-xl mt-4">
+                        Share your journey and earn money. Fill out the details below.
+                    </p>
+                </div>
+                 <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                        <Card>
+                             <CardHeader>
+                                <CardTitle>Route</CardTitle>
+                                <CardDescription>Where are you going?</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <FormField
+                                    control={form.control}
+                                    name="origin"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Origin</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g., New York, NY" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="destination"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Destination</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g., Boston, MA" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Schedule</CardTitle>
+                                <CardDescription>When are you leaving?</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <FormField
                                         control={form.control}
                                         name="departureDate"
@@ -147,34 +157,42 @@ function OfferRidePageContent() {
                                         )}
                                     />
                                 </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                <FormField
-                                        control={form.control}
-                                        name="availableSeats"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Available Seats</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" min="1" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                            </CardContent>
+                        </Card>
+                        
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Details</CardTitle>
+                                <CardDescription>Set your price and available seats.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
                                     <FormField
-                                        control={form.control}
-                                        name="fare"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Price per Seat ($)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" min="0" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                            control={form.control}
+                                            name="availableSeats"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Available Seats</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" min="1" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="fare"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Price per Seat ($)</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" min="0" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                 </div>
 
                                 <FormField
@@ -182,27 +200,27 @@ function OfferRidePageContent() {
                                     name="details"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Ride Details</FormLabel>
+                                            <FormLabel>Ride Notes (Optional)</FormLabel>
                                             <FormControl>
-                                                <Textarea placeholder="Optional: Mention any important details like luggage space, pickup points, etc." {...field} />
+                                                <Textarea placeholder="e.g., I have space for one small bag, no pets please." {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
-                                
-                                <Button 
-                                    type="submit" 
-                                    className="w-full shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all duration-300"
-                                    size="lg"
-                                    disabled={form.formState.isSubmitting}
-                                >
-                                    {form.formState.isSubmitting ? "Publishing..." : "Publish Ride"}
-                                </Button>
-                            </form>
-                        </Form>
-                    </CardContent>
-                </Card>
+                            </CardContent>
+                        </Card>
+                        
+                        <Button 
+                            type="submit" 
+                            className="w-full"
+                            size="lg"
+                            disabled={form.formState.isSubmitting}
+                        >
+                            {form.formState.isSubmitting ? "Publishing..." : "Publish Ride"}
+                        </Button>
+                    </form>
+                </Form>
             </MotionDiv>
         </div>
     );
