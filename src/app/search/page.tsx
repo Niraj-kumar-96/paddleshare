@@ -5,19 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Calendar, Car, Clock, Users, Search, Star } from "lucide-react";
+import { ArrowRight, Calendar, Car, Clock, Users, Search, Star, Truck } from "lucide-react";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
-import { collection, doc, query, Query, where, getDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, query, Query, where } from "firebase/firestore";
 import { Ride } from "@/types/ride";
 import { User } from "@/types/user";
 import { Review } from "@/types/review";
-import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { Vehicle } from "@/types/vehicle";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MotionDiv } from "@/components/client/motion-div";
@@ -64,8 +64,13 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
         if(!firestore || !ride.driverId) return null;
         return doc(firestore, 'users', ride.driverId);
     }, [firestore, ride.driverId]);
-
     const { data: driver, isLoading: isLoadingDriver } = useDoc<User>(driverRef);
+    
+    const vehicleRef = useMemoFirebase(() => {
+        if(!firestore || !ride.vehicleId) return null;
+        return doc(firestore, 'vehicles', ride.vehicleId);
+    }, [firestore, ride.vehicleId]);
+    const { data: vehicle, isLoading: isLoadingVehicle } = useDoc<Vehicle>(vehicleRef);
 
     const rideImage = PlaceHolderImages[index % 4];
 
@@ -74,23 +79,16 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
             router.push('/login?redirect=/search');
             return;
         }
-        if (!firestore) return;
-
-        const bookingsCollection = collection(firestore, "bookings");
-        addDocumentNonBlocking(bookingsCollection, {
-            rideId: ride.id,
-            passengerId: user.uid,
-            bookingTime: new Date().toISOString(),
-            numberOfSeats: 1, 
-            status: "pending",
-            paymentStatus: 'pending'
-        }).then(() => {
+        if (ride.availableSeats < 1) {
             toast({
-                title: "Booking Requested!",
-                description: "The driver has been notified of your request.",
+                variant: 'destructive',
+                title: 'Booking Failed',
+                description: 'Sorry, there are no available seats for this ride.'
             });
-            router.push("/dashboard/bookings");
-        });
+            return;
+        }
+        // Navigate to checkout page instead of creating a pending booking
+        router.push(`/dashboard/checkout/${ride.id}`);
     };
 
     return (
@@ -127,6 +125,9 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
                             <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> {new Date(ride.departureTime).toLocaleTimeString()}</div>
                             <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> {new Date(ride.departureTime).toLocaleDateString()}</div>
                             <div className="flex items-center gap-2"><Users className="h-4 w-4" /> {ride.availableSeats} seats available</div>
+                             {isLoadingVehicle ? <Skeleton className="h-5 w-24" /> : vehicle && (
+                                <div className="flex items-center gap-2"><Truck className="h-4 w-4" /> {vehicle.make} {vehicle.model}</div>
+                             )}
                         </div>
                     </div>
                     <div className="flex justify-between items-center mt-6 pt-4 border-t">
@@ -150,7 +151,9 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
                             ) : null}
                         </div>
                         {user?.uid !== ride.driverId ? (
-                            <Button onClick={handleBooking}>Request to Book</Button>
+                             <Button onClick={handleBooking} disabled={ride.availableSeats < 1}>
+                                {ride.availableSeats > 0 ? 'Book Now' : 'Full'}
+                            </Button>
                         ) : (
                             <Button disabled>Your Ride</Button>
                         )}
@@ -205,29 +208,27 @@ function SearchPageComponent() {
         
         let q: Query = collection(firestore, "rides");
 
-        if (from) {
-            // This is a simple substring search. For more complex queries, you would need a search service like Algolia.
-            q = query(q, where("origin", ">=", from), where("origin", "<=", from + '\uf8ff'));
-        }
-        if (to) {
-            q = query(q, where("destination", ">=", to), where("destination", "<=", to + '\uf8ff'));
-        }
-        
-        // Filter for rides that have not departed yet
+        // IMPORTANT: Firestore only allows one range filter per query.
+        // We will filter by departure time on the backend, and the rest on the client.
         q = query(q, where("departureTime", ">=", new Date().toISOString()));
 
+        if (from) {
+             q = query(q, where("origin", ">=", from), where("origin", "<=", from + '\uf8ff'));
+        }
+
         return q;
-    }, [firestore, from, to]);
+    }, [firestore, from]);
 
     const { data: allRides, isLoading } = useCollection<Ride>(ridesQuery);
 
     const filteredRides = useMemo(() => {
         if (!allRides) return [];
         return allRides.filter(ride => {
+            const destinationMatch = to ? ride.destination.toLowerCase().includes(to.toLowerCase()) : true;
             const dateMatch = date ? new Date(ride.departureTime).toISOString().split('T')[0] === date : true;
-            return dateMatch;
+            return destinationMatch && dateMatch;
         });
-    }, [allRides, date]);
+    }, [allRides, to, date]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -294,6 +295,10 @@ export default function SearchPage() {
     
 
     
+    
+
+    
+
     
 
     
