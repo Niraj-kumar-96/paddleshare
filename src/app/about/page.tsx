@@ -24,7 +24,7 @@ const values = [
 ];
 
 export default function AboutPage() {
-  const aboutHeroImage = PlaceHolderImages.find(p => p.id === 'about-hero');
+  const aboutHeroImage = PlaceHolderImages.find(p => p.id === 'hero');
 
   return (
     <div className="container py-12 md:py-24">
