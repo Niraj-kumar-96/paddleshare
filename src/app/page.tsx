@@ -115,19 +115,13 @@ export default function Home() {
                 transition={{ duration: 0.5, delay: 0.6 }}
               >
                 <form action="/search" className="mt-8 max-w-2xl mx-auto">
-                    <div className="p-2 rounded-lg bg-background/80 backdrop-blur-sm">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 items-center">
-                        <div className="lg:col-span-2">
-                           <Input name="from" placeholder="Leaving from" className="h-12 text-base"/>
-                        </div>
-                        <div className="lg:col-span-2">
-                            <Input name="to" placeholder="Going to" className="h-12 text-base"/>
-                        </div>
-                        <Button type="submit" size="lg" className="w-full h-12 text-base">
-                          <Search className="mr-2 h-5 w-5" />
+                    <div className="p-2 rounded-lg bg-background/80 backdrop-blur-sm flex items-center gap-2">
+                        <Search className="ml-2 h-5 w-5 text-muted-foreground shrink-0" />
+                        <Input name="from" placeholder="Leaving from..." className="h-12 text-base bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 flex-1" />
+                        <Input name="to" placeholder="Going to..." className="h-12 text-base bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 flex-1" />
+                        <Button type="submit" size="lg" className="h-12 text-base">
                           Find a ride
                         </Button>
-                      </div>
                     </div>
                 </form>
               </MotionDiv>
