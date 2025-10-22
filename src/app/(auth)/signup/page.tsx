@@ -49,17 +49,15 @@ export default function SignupPage() {
     },
   });
   
-  const handleUserCreation = async (userCred: UserCredential) => {
+  const handleUserCreation = async (userCred: UserCredential, nameFromForm?: string) => {
     const loggedInUser = userCred.user;
     if(firestore) {
         const userDocRef = doc(firestore, 'users', loggedInUser.uid);
         const userDoc = await getDoc(userDocRef);
 
-        // Only create user doc if it's a new user
         if (!userDoc.exists()) {
-            const name = form.getValues("name") || loggedInUser.displayName;
+            const name = nameFromForm || loggedInUser.displayName;
             
-            // Update profile for email/password sign up
             if (loggedInUser.displayName !== name) {
                 await updateProfile(loggedInUser, { displayName: name });
             }
@@ -81,7 +79,7 @@ export default function SignupPage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-        await handleUserCreation(userCredential);
+        await handleUserCreation(userCredential, values.name);
     } catch (error) {
         console.error("Email/password sign-up error", error);
     }

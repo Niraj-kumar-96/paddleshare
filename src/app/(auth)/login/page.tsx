@@ -45,13 +45,21 @@ export default function LoginPage() {
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    signInWithEmailAndPassword(auth, values.email, values.password);
+    signInWithEmailAndPassword(auth, values.email, values.password)
+      .then(() => {
+        router.push("/dashboard");
+      })
+      .catch((error) => {
+        console.error("Login error", error);
+        // Handle error display to user
+      });
   };
   
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
+      router.push("/dashboard");
     } catch (error) {
       console.error("Google sign-in error", error);
     }
