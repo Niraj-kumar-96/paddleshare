@@ -14,7 +14,7 @@ import { SidebarSeparator } from "@/components/ui/sidebar";
 
 const menuItems = [
     { icon: <LayoutDashboard />, label: "Dashboard", href: "/dashboard" },
-    { icon: <Car />, label: "My Rides", href: "/dashboard/rides" },
+    { icon: <Car />, label: "My Rides & Bookings", href: "/dashboard/rides" },
     { icon: <Truck />, label: "My Vehicles", href: "/dashboard/vehicles" },
     { icon: <Briefcase />, label: "My Trips", href: "/dashboard/bookings" },
     { icon: <Wallet />, label: "Wallet", href: "/dashboard/wallet" },
