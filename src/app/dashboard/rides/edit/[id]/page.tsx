@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,6 @@ import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Ride } from "@/types/ride";
-import { useMemoFirebase } from "@/firebase/provider";
 import { CalendarIcon, Loader } from "lucide-react";
 import { useEffect } from "react";
 import { format } from 'date-fns';
@@ -42,12 +40,7 @@ function EditRidePageContent({ params }: { params: { id: string } }) {
     const router = useRouter();
     const { toast } = useToast();
 
-    const rideRef = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return doc(firestore, 'rides', params.id);
-    }, [firestore, params.id]);
-
-    const { data: ride, isLoading } = useDoc<Ride>(rideRef);
+    const { data: ride, isLoading } = useDoc<Ride>(params.id ? `rides/${params.id}` : null);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),

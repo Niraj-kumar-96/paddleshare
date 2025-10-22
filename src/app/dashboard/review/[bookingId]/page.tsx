@@ -1,13 +1,11 @@
-
 "use client";
 
-import { useDoc, useFirestore, useUser } from "@/firebase";
-import { useMemoFirebase } from "@/firebase/provider";
+import { useDoc, useUser } from "@/firebase";
 import { Booking } from "@/types/booking";
 import { Ride } from "@/types/ride";
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { collection, serverTimestamp } from "firebase/firestore";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,27 +29,12 @@ function ReviewPageContent() {
     const params = useParams();
     const bookingId = params.bookingId as string;
     const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
 
-    const bookingRef = useMemoFirebase(() => {
-        if (!firestore || !bookingId) return null;
-        return doc(firestore, 'bookings', bookingId);
-    }, [firestore, bookingId]);
-    const { data: booking, isLoading: isLoadingBooking } = useDoc<Booking>(bookingRef);
-
-    const rideRef = useMemoFirebase(() => {
-        if (!firestore || !booking) return null;
-        return doc(firestore, 'rides', booking.rideId);
-    }, [firestore, booking]);
-    const { data: ride, isLoading: isLoadingRide } = useDoc<Ride>(rideRef);
-
-    const driverRef = useMemoFirebase(() => {
-        if(!firestore || !ride) return null;
-        return doc(firestore, 'users', ride.driverId);
-    }, [firestore, ride]);
-    const { data: driver } = useDoc<User>(driverRef);
+    const { data: booking, isLoading: isLoadingBooking } = useDoc<Booking>(bookingId ? `bookings/${bookingId}` : null);
+    const { data: ride, isLoading: isLoadingRide } = useDoc<Ride>(booking ? `rides/${booking.rideId}` : null);
+    const { data: driver } = useDoc<User>(ride ? `users/${ride.driverId}` : null);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -65,10 +48,9 @@ function ReviewPageContent() {
     const rating = form.watch("rating");
 
     const onSubmit = (values: z.infer<typeof formSchema>) => {
-        if (!firestore || !user || !ride || !booking) return;
+        if (!user || !ride || !booking) return;
 
-        const reviewsCollection = collection(firestore, 'reviews');
-        addDocumentNonBlocking(reviewsCollection, {
+        addDocumentNonBlocking(collection(getFirestore(), 'reviews'), {
             rideId: ride.id,
             driverId: ride.driverId,
             reviewerId: user.uid,

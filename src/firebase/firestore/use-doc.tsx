@@ -1,15 +1,17 @@
 'use client';
     
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   DocumentReference,
   onSnapshot,
   DocumentData,
   FirestoreError,
   DocumentSnapshot,
+  doc,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useFirestore } from '../provider';
 
 /** Utility type to add an 'id' field to a given type T. */
 type WithId<T> = T & { id: string };
@@ -26,38 +28,44 @@ export interface UseDocResult<T> {
 
 /**
  * React hook to subscribe to a single Firestore document in real-time.
- * Handles nullable references.
- * 
- * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
- * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
- * references
- *
+ * This hook is stable and memoizes the document reference internally.
  *
  * @template T Optional type for document data. Defaults to any.
- * @param {DocumentReference<DocumentData> | null | undefined} docRef -
- * The Firestore DocumentReference. Waits if null/undefined.
+ * @param {string | null | undefined} path - The path to the document. The hook will not run if the path is null or undefined.
  * @returns {UseDocResult<T>} Object with data, isLoading, error.
  */
 export function useDoc<T = any>(
-  memoizedDocRef: DocumentReference<DocumentData> | null | undefined,
+  path: string | null | undefined,
 ): UseDocResult<T> {
   type StateDataType = WithId<T> | null;
 
+  const firestore = useFirestore();
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+
+  const memoizedDocRef = useMemo(() => {
+    if (!firestore || !path) {
+      return null;
+    }
+    // Simple validation to ensure it's a doc path, not a collection path.
+    if (path.split('/').filter(p => p).length % 2 !== 0) {
+      console.warn(`[useDoc] Invalid document path provided: "${path}". Document paths must have an even number of segments.`);
+      return null;
+    }
+    return doc(firestore, path);
+  }, [firestore, path]);
+
 
   useEffect(() => {
     if (!memoizedDocRef) {
       setData(null);
       setIsLoading(false);
-      setError(null);
       return;
     }
 
     setIsLoading(true);
     setError(null);
-    // Optional: setData(null); // Clear previous data instantly
 
     const unsubscribe = onSnapshot(
       memoizedDocRef,
@@ -68,7 +76,7 @@ export function useDoc<T = any>(
           // Document does not exist
           setData(null);
         }
-        setError(null); // Clear any previous error on successful snapshot (even if doc doesn't exist)
+        setError(null); // Clear any previous error on successful snapshot
         setIsLoading(false);
       },
       (error: FirestoreError) => {
@@ -87,7 +95,7 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef]); // Re-run if the memoizedDocRef changes.
+  }, [memoizedDocRef]);
 
   return { data, isLoading, error };
 }

@@ -1,8 +1,6 @@
-
 "use client";
 
 import { useCollection, useFirestore, useUser } from "@/firebase";
-import { useMemoFirebase } from "@/firebase/provider";
 import { Booking } from "@/types/booking";
 import { collection, query, where, doc, getDocs, orderBy, deleteDoc } from "firebase/firestore";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -12,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { MessageSquare, Star, CreditCard, XCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,12 +21,7 @@ function BookingItem({ booking }: { booking: Booking }) {
     const { user } = useUser();
     const { toast } = useToast();
 
-    const rideRef = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return doc(firestore, "rides", booking.rideId);
-    }, [firestore, booking.rideId]);
-
-    const { data: ride, isLoading } = useDoc<Ride>(rideRef);
+    const { data: ride, isLoading } = useDoc<Ride>(`rides/${booking.rideId}`);
 
     useEffect(() => {
         const checkReview = async () => {
@@ -128,14 +121,22 @@ function BookingSkeleton() {
 
 export default function BookingsPage() {
     const { user } = useUser();
-    const firestore = useFirestore();
+    
+    const passengerBookingsQuery = useMemo(() => {
+        if (!user) return null;
+        return {
+            path: "bookings",
+            constraints: [
+                where("passengerId", "==", user.uid), 
+                orderBy("bookingTime", "desc")
+            ]
+        }
+    }, [user]);
 
-    const passengerBookingsQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return query(collection(firestore, "bookings"), where("passengerId", "==", user.uid), orderBy("bookingTime", "desc"));
-    }, [firestore, user]);
-
-    const { data: passengerBookings, isLoading } = useCollection<Booking>(passengerBookingsQuery);
+    const { data: passengerBookings, isLoading } = useCollection<Booking>(
+        passengerBookingsQuery?.path,
+        passengerBookingsQuery?.constraints
+    );
 
     return (
         <div>
@@ -162,5 +163,3 @@ export default function BookingsPage() {
         </div>
     );
 }
-
-    

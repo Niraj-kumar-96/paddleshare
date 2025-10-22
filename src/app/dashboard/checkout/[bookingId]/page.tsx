@@ -1,4 +1,3 @@
-
 'use client';
 
 import { createPaymentIntent } from '@/ai/flows/create-payment-intent';
@@ -7,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDoc, useFirestore, useUser } from '@/firebase';
-import { useMemoFirebase } from '@/firebase/provider';
 import { STRIPE_PUBLISHABLE_KEY } from '@/app/config';
 import { useToast } from '@/hooks/use-toast';
 import { Ride } from '@/types/ride';
@@ -154,15 +152,10 @@ function CheckoutForm({ ride }: { ride: Ride }) {
 function CheckoutPageContent() {
   const params = useParams();
   const rideId = params.bookingId as string; // It's actually rideId
-  const firestore = useFirestore();
   
   const [options, setOptions] = useState<StripeElementsOptions | null>(null);
 
-  const rideRef = useMemoFirebase(() => {
-    if (!firestore || !rideId) return null;
-    return doc(firestore, 'rides', rideId);
-  }, [firestore, rideId]);
-  const { data: ride, isLoading: isLoadingRide } = useDoc<Ride>(rideRef);
+  const { data: ride, isLoading: isLoadingRide } = useDoc<Ride>(rideId ? `rides/${rideId}` : null);
 
   useEffect(() => {
     if (ride && ride.fare > 0) {

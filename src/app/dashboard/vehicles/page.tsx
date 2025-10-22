@@ -1,14 +1,12 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/componentsui/card";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useCollection, useFirestore, useUser } from "@/firebase";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { useMemoFirebase } from "@/firebase/provider";
 import { Vehicle } from "@/types/vehicle";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +16,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useMemo } from "react";
 
 const formSchema = z.object({
     make: z.string().min(1, "Make is required"),
@@ -77,12 +76,15 @@ function VehiclesPageContent() {
     const firestore = useFirestore();
     const { toast } = useToast();
 
-    const vehiclesQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return query(collection(firestore, 'vehicles'), where('driverId', '==', user.uid));
-    }, [user, firestore]);
+    const vehiclesQuery = useMemo(() => {
+        if (!user) return null;
+        return { path: 'vehicles', constraints: [where('driverId', '==', user.uid)] };
+    }, [user]);
 
-    const { data: vehicles, isLoading } = useCollection<Vehicle>(vehiclesQuery);
+    const { data: vehicles, isLoading } = useCollection<Vehicle>(
+        vehiclesQuery?.path,
+        vehiclesQuery?.constraints
+    );
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),

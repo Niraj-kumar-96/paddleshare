@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -9,8 +8,7 @@ import { ArrowRight, Calendar, Car, Clock, Users, Search, Star, Truck } from "lu
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
-import { useMemoFirebase } from "@/firebase/provider";
-import { collection, doc, query, Query, where } from "firebase/firestore";
+import { query, Query, where } from "firebase/firestore";
 import { Ride } from "@/types/ride";
 import { User } from "@/types/user";
 import { Review } from "@/types/review";
@@ -22,17 +20,20 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MotionDiv } from "@/components/client/motion-div";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 
 function DriverRating({ driverId }: { driverId: string }) {
-    const firestore = useFirestore();
+    const reviewsQuery = useMemo(() => {
+        if(!driverId) return null;
+        return {
+            path: 'reviews',
+            constraints: [where('driverId', '==', driverId)]
+        }
+    }, [driverId]);
 
-    const reviewsQuery = useMemoFirebase(() => {
-        if(!firestore || !driverId) return null;
-        return query(collection(firestore, 'reviews'), where('driverId', '==', driverId));
-    }, [firestore, driverId]);
-
-    const { data: reviews, isLoading } = useCollection<Review>(reviewsQuery);
+    const { data: reviews, isLoading } = useCollection<Review>(
+        reviewsQuery?.path,
+        reviewsQuery?.constraints
+    );
 
     if (isLoading || !reviews) {
         return <Skeleton className="h-5 w-20" />;
@@ -55,22 +56,12 @@ function DriverRating({ driverId }: { driverId: string }) {
 
 
 function RideCard({ ride, index }: { ride: Ride, index: number }) {
-    const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
     const router = useRouter();
 
-    const driverRef = useMemoFirebase(() => {
-        if(!firestore || !ride.driverId) return null;
-        return doc(firestore, 'users', ride.driverId);
-    }, [firestore, ride.driverId]);
-    const { data: driver, isLoading: isLoadingDriver } = useDoc<User>(driverRef);
-    
-    const vehicleRef = useMemoFirebase(() => {
-        if(!firestore || !ride.vehicleId) return null;
-        return doc(firestore, 'vehicles', ride.vehicleId);
-    }, [firestore, ride.vehicleId]);
-    const { data: vehicle, isLoading: isLoadingVehicle } = useDoc<Vehicle>(vehicleRef);
+    const { data: driver, isLoading: isLoadingDriver } = useDoc<User>(`users/${ride.driverId}`);
+    const { data: vehicle, isLoading: isLoadingVehicle } = useDoc<Vehicle>(`vehicles/${ride.vehicleId}`);
 
     const rideImage = PlaceHolderImages[index % 4];
 
@@ -195,7 +186,6 @@ function RideCardSkeleton() {
 }
 
 function SearchPageComponent() {
-    const firestore = useFirestore();
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -203,23 +193,22 @@ function SearchPageComponent() {
     const [to, setTo] = useState(searchParams.get('to') || '');
     const [date, setDate] = useState(searchParams.get('date') ||'');
 
-    const ridesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        
-        let q: Query = collection(firestore, "rides");
-
-        // IMPORTANT: Firestore only allows one range filter per query.
-        // We will filter by departure time on the backend, and the rest on the client.
-        q = query(q, where("departureTime", ">=", new Date().toISOString()));
+    const ridesQuery = useMemo(() => {
+        const constraints: QueryConstraint[] = [
+            where("departureTime", ">=", new Date().toISOString())
+        ];
 
         if (from) {
-             q = query(q, where("origin", ">=", from), where("origin", "<=", from + '\uf8ff'));
+             constraints.push(where("origin", ">=", from), where("origin", "<=", from + '\uf8ff'));
         }
+        
+        return { path: "rides", constraints };
+    }, [from]);
 
-        return q;
-    }, [firestore, from]);
-
-    const { data: allRides, isLoading } = useCollection<Ride>(ridesQuery);
+    const { data: allRides, isLoading } = useCollection<Ride>(
+        ridesQuery.path,
+        ridesQuery.constraints
+    );
 
     const filteredRides = useMemo(() => {
         if (!allRides) return [];
@@ -292,13 +281,3 @@ export default function SearchPage() {
     // Wrap with React.Suspense to handle query param reading
     return <React.Suspense><SearchPageComponent /></React.Suspense>
 }
-    
-
-    
-    
-
-    
-
-    
-
-    

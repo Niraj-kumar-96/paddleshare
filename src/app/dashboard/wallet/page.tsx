@@ -1,15 +1,13 @@
-
 "use client";
 
-import { useCollection, useFirestore, useUser } from "@/firebase";
-import { useMemoFirebase } from "@/firebase/provider";
-import { collection, query, where } from "firebase/firestore";
+import { useCollection, useUser } from "@/firebase";
+import { query, where } from "firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Ride } from "@/types/ride";
 import { Booking } from "@/types/booking";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { useMemo } from "react";
 
 function WalletSkeleton() {
     return (
@@ -52,25 +50,36 @@ function WalletSkeleton() {
 
 export default function WalletPage() {
     const { user } = useUser();
-    const firestore = useFirestore();
 
-    const ridesQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return query(collection(firestore, "rides"), where("driverId", "==", user.uid));
-    }, [firestore, user]);
+    const ridesQuery = useMemo(() => {
+        if (!user) return null;
+        return { path: "rides", constraints: [where("driverId", "==", user.uid)] };
+    }, [user]);
 
-    const { data: rides, isLoading: isLoadingRides } = useCollection<Ride>(ridesQuery);
+    const { data: rides, isLoading: isLoadingRides } = useCollection<Ride>(
+        ridesQuery?.path,
+        ridesQuery?.constraints
+    );
 
-    const rideIds = useMemoFirebase(() => rides?.map(r => r.id) || [], [rides]);
+    const rideIds = useMemo(() => rides?.map(r => r.id) || [], [rides]);
 
-    const bookingsQuery = useMemoFirebase(() => {
-        if (!firestore || rideIds.length === 0) return null;
-        return query(collection(firestore, "bookings"), where("rideId", "in", rideIds), where("paymentStatus", "==", "paid"));
-    }, [firestore, rideIds]);
+    const bookingsQuery = useMemo(() => {
+        if (rideIds.length === 0) return null;
+        return {
+            path: "bookings",
+            constraints: [
+                where("rideId", "in", rideIds),
+                where("paymentStatus", "==", "paid")
+            ]
+        };
+    }, [rideIds]);
 
-    const { data: bookings, isLoading: isLoadingBookings } = useCollection<Booking>(bookingsQuery);
+    const { data: bookings, isLoading: isLoadingBookings } = useCollection<Booking>(
+        bookingsQuery?.path,
+        bookingsQuery?.constraints
+    );
 
-    const { totalEarnings, totalSeatsSold, paidRides } = useMemoFirebase(() => {
+    const { totalEarnings, totalSeatsSold, paidRides } = useMemo(() => {
         if (!bookings || !rides) return { totalEarnings: 0, totalSeatsSold: 0, paidRides: [] };
 
         const earnings = bookings.reduce((acc, booking) => {
@@ -93,7 +102,7 @@ export default function WalletPage() {
 
     }, [bookings, rides]);
 
-    const isLoading = isLoadingRides || isLoadingBookings;
+    const isLoading = isLoadingRides || (rideIds.length > 0 && isLoadingBookings);
 
     if (isLoading) {
         return <WalletSkeleton />;

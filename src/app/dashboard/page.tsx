@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -6,30 +5,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { useCollection, useFirestore, useUser } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
-import { useMemoFirebase } from "@/firebase/provider";
+import { query, where } from "firebase/firestore";
+import { useMemo } from "react";
 import { Ride } from "@/types/ride";
 import { Booking } from "@/types/booking";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
     const { user } = useUser();
-    const firestore = useFirestore();
 
-    const driverRidesQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return query(collection(firestore, "rides"), where("driverId", "==", user.uid));
-    }, [firestore, user]);
+    const driverRidesQuery = useMemo(() => {
+        if (!user) return null;
+        return { path: "rides", constraints: [where("driverId", "==", user.uid)] };
+    }, [user]);
 
-    const passengerBookingsQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return query(collection(firestore, "bookings"), where("passengerId", "==", user.uid));
-    }, [firestore, user]);
+    const passengerBookingsQuery = useMemo(() => {
+        if (!user) return null;
+        return { path: "bookings", constraints: [where("passengerId", "==", user.uid)] };
+    }, [user]);
 
-    const { data: driverRides, isLoading: isLoadingRides } = useCollection<Ride>(driverRidesQuery);
-    const { data: passengerBookings, isLoading: isLoadingBookings } = useCollection<Booking>(passengerBookingsQuery);
+    const { data: driverRides, isLoading: isLoadingRides } = useCollection<Ride>(
+        driverRidesQuery?.path,
+        driverRidesQuery?.constraints
+    );
+    const { data: passengerBookings, isLoading: isLoadingBookings } = useCollection<Booking>(
+        passengerBookingsQuery?.path,
+        passengerBookingsQuery?.constraints
+    );
 
-    const totalEarnings = useMemoFirebase(() => {
+    const totalEarnings = useMemo(() => {
         return driverRides?.reduce((acc, ride) => acc + ride.fare, 0) || 0;
     }, [driverRides]);
     

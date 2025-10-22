@@ -1,8 +1,6 @@
-
 "use client";
 
 import { useCollection, useFirestore, useUser } from "@/firebase";
-import { useMemoFirebase } from "@/firebase/provider";
 import { Ride } from "@/types/ride";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -13,19 +11,28 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Booking } from "@/types/booking";
 import { Badge } from "@/components/ui/badge";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 
 function RideItem({ ride }: { ride: Ride }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     
-    const confirmedBookingsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, "bookings"), where("rideId", "==", ride.id), where("status", "==", "confirmed"));
-    }, [firestore, ride.id]);
+    const confirmedBookingsQuery = useMemo(() => {
+        if (!ride.id) return null;
+        return {
+            path: "bookings",
+            constraints: [
+                where("rideId", "==", ride.id),
+                where("status", "==", "confirmed")
+            ]
+        }
+    }, [ride.id]);
 
-    const { data: confirmedBookings } = useCollection<Booking>(confirmedBookingsQuery);
+    const { data: confirmedBookings } = useCollection<Booking>(
+        confirmedBookingsQuery?.path,
+        confirmedBookingsQuery?.constraints
+    );
     
     const passengerCount = confirmedBookings?.length || 0;
 
@@ -122,14 +129,16 @@ function RideSkeleton() {
 
 export default function RidesPage() {
     const { user } = useUser();
-    const firestore = useFirestore();
 
-    const driverRidesQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return query(collection(firestore, "rides"), where("driverId", "==", user.uid));
-    }, [firestore, user]);
+    const driverRidesQuery = useMemo(() => {
+        if (!user) return null;
+        return { path: 'rides', constraints: [where("driverId", "==", user.uid)] }
+    }, [user]);
 
-    const { data: driverRides, isLoading } = useCollection<Ride>(driverRidesQuery);
+    const { data: driverRides, isLoading } = useCollection<Ride>(
+        driverRidesQuery?.path,
+        driverRidesQuery?.constraints
+    );
 
     return (
         <div>
@@ -163,5 +172,3 @@ export default function RidesPage() {
         </div>
     );
 }
-
-    

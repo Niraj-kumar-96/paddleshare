@@ -1,8 +1,6 @@
-
 "use client";
 
-import { useCollection, useDoc, useFirestore } from "@/firebase";
-import { useMemoFirebase } from "@/firebase/provider";
+import { useCollection, useDoc } from "@/firebase";
 import { User } from "@/types/user";
 import { Review } from "@/types/review";
 import { collection, doc, query, where, orderBy } from "firebase/firestore";
@@ -16,13 +14,7 @@ import { useMemo } from "react";
 
 
 function ReviewCard({ review }: { review: Review }) {
-    const firestore = useFirestore();
-    const reviewerRef = useMemoFirebase(() => {
-        if (!firestore || !review.reviewerId) return null;
-        return doc(firestore, 'users', review.reviewerId);
-    }, [firestore, review.reviewerId]);
-
-    const { data: reviewer } = useDoc<User>(reviewerRef);
+    const { data: reviewer } = useDoc<User>(`users/${review.reviewerId}`);
     
     return (
         <div className="border-b py-4">
@@ -52,19 +44,24 @@ function ReviewCard({ review }: { review: Review }) {
 function ProfilePageContent() {
     const params = useParams();
     const userId = params.id as string;
-    const firestore = useFirestore();
 
-    const userRef = useMemoFirebase(() => {
-        if (!firestore || !userId) return null;
-        return doc(firestore, 'users', userId);
-    }, [firestore, userId]);
-    const { data: user, isLoading: isLoadingUser } = useDoc<User>(userRef);
+    const { data: user, isLoading: isLoadingUser } = useDoc<User>(userId ? `users/${userId}` : null);
 
-    const reviewsQuery = useMemoFirebase(() => {
-        if (!firestore || !userId) return null;
-        return query(collection(firestore, 'reviews'), where('driverId', '==', userId), orderBy('createdAt', 'desc'));
-    }, [firestore, userId]);
-    const { data: reviews, isLoading: isLoadingReviews } = useCollection<Review>(reviewsQuery);
+    const reviewsQuery = useMemo(() => {
+        if (!userId) return null;
+        return {
+            path: 'reviews',
+            constraints: [
+                where('driverId', '==', userId),
+                orderBy('createdAt', 'desc')
+            ]
+        };
+    }, [userId]);
+
+    const { data: reviews, isLoading: isLoadingReviews } = useCollection<Review>(
+        reviewsQuery?.path,
+        reviewsQuery?.constraints
+    );
 
     const avgRating = useMemo(() => {
         if (!reviews || reviews.length === 0) return 0;

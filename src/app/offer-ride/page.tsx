@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ import { CalendarIcon, Truck } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Vehicle } from "@/types/vehicle";
-import { useMemoFirebase } from "@/firebase/provider";
+import { useMemo } from "react";
 import Link from "next/link";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,12 +46,15 @@ function OfferRidePageContent() {
     const router = useRouter();
     const { toast } = useToast();
 
-    const vehiclesQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return query(collection(firestore, 'vehicles'), where('driverId', '==', user.uid));
-    }, [user, firestore]);
+    const vehiclesQuery = useMemo(() => {
+        if (!user) return null;
+        return { path: 'vehicles', constraints: [where('driverId', '==', user.uid)] };
+    }, [user]);
 
-    const { data: vehicles, isLoading: isLoadingVehicles } = useCollection<Vehicle>(vehiclesQuery);
+    const { data: vehicles, isLoading: isLoadingVehicles } = useCollection<Vehicle>(
+        vehiclesQuery?.path,
+        vehiclesQuery?.constraints
+    );
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),

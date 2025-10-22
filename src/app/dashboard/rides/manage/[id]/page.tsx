@@ -1,37 +1,26 @@
-
 "use client";
 
 import { useCollection, useDoc, useFirestore, useUser } from "@/firebase";
-import { useMemoFirebase } from "@/firebase/provider";
 import { Ride } from "@/types/ride";
 import { Booking } from "@/types/booking";
 import { User } from "@/types/user";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useParams } from "next/navigation";
-import { collection, doc, query, where, writeBatch } from "firebase/firestore";
+import { query, where } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { CreditCard, MessageSquare } from "lucide-react";
-import React from 'react';
+import React, { useMemo } from 'react';
 
 function ConfirmedBookingCard({ booking, ride }: { booking: Booking, ride: Ride }) {
-    const firestore = useFirestore();
-    const { toast } = useToast();
 
-    const passengerRef = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return doc(firestore, 'users', booking.passengerId);
-    }, [firestore, booking.passengerId]);
-    const { data: passenger, isLoading } = useDoc<User>(passengerRef);
+    const { data: passenger, isLoading } = useDoc<User>(`users/${booking.passengerId}`);
 
-    
     if (isLoading) {
         return (
             <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -91,19 +80,24 @@ function ManageRidePageContent() {
     const params = useParams();
     const rideId = params.id as string;
     const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
 
-    const rideRef = useMemoFirebase(() => {
-        if (!firestore || !rideId) return null;
-        return doc(firestore, 'rides', rideId);
-    }, [firestore, rideId]);
-    const { data: ride, isLoading: isLoadingRide } = useDoc<Ride>(rideRef);
+    const { data: ride, isLoading: isLoadingRide } = useDoc<Ride>(rideId ? `rides/${rideId}` : null);
 
-    const bookingsQuery = useMemoFirebase(() => {
-        if (!firestore || !rideId) return null;
-        return query(collection(firestore, 'bookings'), where('rideId', '==', rideId), where('status', '==', 'confirmed'));
-    }, [firestore, rideId]);
-    const { data: bookings, isLoading: isLoadingBookings } = useCollection<Booking>(bookingsQuery);
+    const bookingsQuery = useMemo(() => {
+        if (!rideId) return null;
+        return {
+            path: 'bookings',
+            constraints: [
+                where('rideId', '==', rideId),
+                where('status', '==', 'confirmed')
+            ]
+        }
+    }, [rideId]);
+
+    const { data: bookings, isLoading: isLoadingBookings } = useCollection<Booking>(
+        bookingsQuery?.path,
+        bookingsQuery?.constraints
+    );
 
     const isLoading = isUserLoading || isLoadingRide || isLoadingBookings;
 
@@ -161,5 +155,3 @@ export default function ManageRidePage() {
         </ProtectedRoute>
     )
 }
-
-    

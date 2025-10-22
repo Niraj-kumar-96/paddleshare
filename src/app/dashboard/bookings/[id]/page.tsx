@@ -1,9 +1,7 @@
-
 "use client";
 
 import { useCollection, useDoc, useFirestore, useUser } from "@/firebase";
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { useMemoFirebase } from "@/firebase/provider";
 import { Booking } from "@/types/booking";
 import { Message } from "@/types/message";
 import { Ride } from "@/types/ride";
@@ -14,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { collection, doc, orderBy, query, serverTimestamp } from "firebase/firestore";
+import { orderBy, query, serverTimestamp } from "firebase/firestore";
 import { ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -57,36 +55,23 @@ function ChatPageContent() {
     const [newMessage, setNewMessage] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const bookingRef = useMemoFirebase(() => {
-        if (!firestore || !bookingId) return null;
-        return doc(firestore, 'bookings', bookingId);
-    }, [firestore, bookingId]);
-    const { data: booking, isLoading: isLoadingBooking } = useDoc<Booking>(bookingRef);
-
-    const rideRef = useMemoFirebase(() => {
-        if(!firestore || !booking?.rideId) return null;
-        return doc(firestore, 'rides', booking.rideId);
-    }, [firestore, booking]);
-    const { data: ride, isLoading: isLoadingRide } = useDoc<Ride>(rideRef);
+    const { data: booking, isLoading: isLoadingBooking } = useDoc<Booking>(`bookings/${bookingId}`);
+    const { data: ride, isLoading: isLoadingRide } = useDoc<Ride>(booking ? `rides/${booking.rideId}` : null);
     
-    // Authorization check before fetching other data
+    // Determine the other user's ID
+    const otherUserId = useMemo(() => {
+        if (!ride || !user || !booking) return null;
+        return ride.driverId === user.uid ? booking.passengerId : ride.driverId;
+    }, [ride, user, booking]);
+
+    const { data: otherUser } = useDoc<User>(otherUserId ? `users/${otherUserId}` : null);
+
+    const { data: messages, isLoading: isLoadingMessages } = useCollection<Message>(
+        bookingId ? `bookings/${bookingId}/messages` : null,
+        [orderBy('timestamp', 'asc')]
+    );
+    
     const isUserInvolved = user?.uid === booking?.passengerId || user?.uid === ride?.driverId;
-    
-    const otherUserRef = useMemoFirebase(() => {
-        if(!firestore || !ride || !user || !booking || !isUserInvolved) return null;
-        const otherUserId = ride.driverId === user.uid ? booking.passengerId : ride.driverId;
-        return doc(firestore, 'users', otherUserId);
-    }, [firestore, ride, user, booking, isUserInvolved]);
-
-    const { data: otherUser } = useDoc<User>(otherUserRef);
-
-    const messagesRef = useMemoFirebase(() => {
-        if (!bookingRef || !isUserInvolved) return null;
-        const messagesCollectionRef = collection(bookingRef, 'messages');
-        return query(messagesCollectionRef, orderBy('timestamp', 'asc'));
-    }, [bookingRef, isUserInvolved]);
-
-    const { data: messages, isLoading: isLoadingMessages } = useCollection<Message>(messagesRef);
 
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
@@ -190,5 +175,3 @@ export default function ChatPage() {
         </ProtectedRoute>
     )
 };
-
-    
