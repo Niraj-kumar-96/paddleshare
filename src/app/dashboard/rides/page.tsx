@@ -4,13 +4,11 @@
 import { useCollection, useFirestore, useUser } from "@/firebase";
 import { useMemoFirebase } from "@/firebase/provider";
 import { Ride } from "@/types/ride";
-import { collection, query, where } from "firebase/firestore";
+import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Booking } from "@/types/booking";
@@ -36,14 +34,36 @@ function RideItem({ ride }: { ride: Ride }) {
         }
     }, [pendingBookings]);
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!firestore) return;
+
+        // Check if there are any bookings for this ride
+        const allBookingsQuery = query(collection(firestore, "bookings"), where("rideId", "==", ride.id));
+        const bookingSnapshot = await getDocs(allBookingsQuery);
+
+        if (!bookingSnapshot.empty) {
+            toast({
+                variant: "destructive",
+                title: "Deletion Failed",
+                description: "Cannot delete a ride that has active or pending bookings. Please resolve all bookings first.",
+            });
+            return;
+        }
+
         const rideRef = doc(firestore, "rides", ride.id);
-        deleteDocumentNonBlocking(rideRef);
-        toast({
-            title: "Ride Deleted",
-            description: "Your ride has been successfully deleted.",
-        });
+        try {
+            await deleteDoc(rideRef);
+            toast({
+                title: "Ride Deleted",
+                description: "Your ride has been successfully deleted.",
+            });
+        } catch (error: any) {
+             toast({
+                variant: "destructive",
+                title: "Error Deleting Ride",
+                description: error.message || "Could not delete the ride.",
+            });
+        }
     };
 
     return (
