@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -13,9 +14,9 @@ import { GoogleAuthProvider, signInWithPopup, updateProfile, UserCredential, cre
 import { useRouter } from "next/navigation";
 import { useUser } from "@/firebase/provider";
 import { useEffect } from "react";
-import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { doc, serverTimestamp, getDoc } from "firebase/firestore";
 import { Logo } from "@/components/logo";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Name is required." }),
@@ -181,3 +182,5 @@ export default function SignupPage() {
     </Card>
   );
 }
+
+    

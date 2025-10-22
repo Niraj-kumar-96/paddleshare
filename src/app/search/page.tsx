@@ -14,7 +14,7 @@ import { collection, doc, query, Query, where, setDoc, getDoc, serverTimestamp }
 import { Ride } from "@/types/ride";
 import { User } from "@/types/user";
 import { Review } from "@/types/review";
-import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useState, useMemo, useEffect } from "react";
@@ -214,7 +214,7 @@ function SearchPageComponent() {
                 const userDoc = await getDoc(userRef);
 
                 if (!userDoc.exists()) {
-                    await setDoc(userRef, {
+                    setDocumentNonBlocking(userRef, {
                         id: testDriverId,
                         displayName: "Test Driver",
                         email: "driver@test.com",
@@ -227,7 +227,7 @@ function SearchPageComponent() {
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 tomorrow.setHours(10, 0, 0, 0);
 
-                await setDoc(rideRef, {
+                setDocumentNonBlocking(rideRef, {
                     driverId: testDriverId,
                     origin: "San Francisco, CA",
                     destination: "Los Angeles, CA",
@@ -324,5 +324,7 @@ export default function SearchPage() {
     // Wrap with React.Suspense to handle query param reading
     return <React.Suspense><SearchPageComponent /></React.Suspense>
 }
+
+    
 
     
