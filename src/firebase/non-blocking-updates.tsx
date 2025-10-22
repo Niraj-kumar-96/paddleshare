@@ -46,6 +46,8 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
           requestResourceData: data,
         })
       )
+      // We still want to propagate the error for local handling if needed.
+      throw error;
     });
   return promise;
 }
