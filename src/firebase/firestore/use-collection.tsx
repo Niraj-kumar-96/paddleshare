@@ -51,7 +51,15 @@ export function useCollection<T = any>(
 
   // Filter out any undefined constraints before creating the dependency string
   const validConstraints = queryConstraints.filter(c => c !== undefined) as QueryConstraint[];
-  const constraintsString = useMemo(() => JSON.stringify(validConstraints), [validConstraints]);
+  const constraintsString = useMemo(() => {
+    // This is a bit of a hack to create a stable dependency string for the query constraints.
+    // The default `toString()` on query constraints is not stable.
+    try {
+      return JSON.stringify(validConstraints.map(c => c.type + JSON.stringify(c)));
+    } catch {
+      return '';
+    }
+  }, [validConstraints]);
 
 
   // Memoize the query object itself.
@@ -71,13 +79,15 @@ export function useCollection<T = any>(
       setData(null);
       return;
     }
-
+    
+    let isMounted = true;
     setIsLoading(true);
     setError(null);
 
     const unsubscribe = onSnapshot(
       memoizedQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
+        if (!isMounted) return;
         const results: ResultItemType[] = snapshot.docs.map(doc => ({
           ...(doc.data() as T),
           id: doc.id
@@ -87,6 +97,7 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
+        if (!isMounted) return;
         const contextualError = new FirestorePermissionError({
           operation: 'list',
           path: path!, // path is guaranteed to be defined if memoizedQuery is not null
@@ -99,7 +110,10 @@ export function useCollection<T = any>(
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, [memoizedQuery, path]); // Re-run effect if the memoized query changes.
 
   return { data, isLoading, error };

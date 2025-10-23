@@ -63,13 +63,15 @@ export function useDoc<T = any>(
       setIsLoading(false);
       return;
     }
-
+    
+    let isMounted = true;
     setIsLoading(true);
     setError(null);
 
     const unsubscribe = onSnapshot(
       memoizedDocRef,
       (snapshot: DocumentSnapshot<DocumentData>) => {
+        if (!isMounted) return;
         if (snapshot.exists()) {
           setData({ ...(snapshot.data() as T), id: snapshot.id });
         } else {
@@ -80,6 +82,7 @@ export function useDoc<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
+        if (!isMounted) return;
         const contextualError = new FirestorePermissionError({
           operation: 'get',
           path: memoizedDocRef.path,
@@ -94,7 +97,10 @@ export function useDoc<T = any>(
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    }
   }, [memoizedDocRef]);
 
   return { data, isLoading, error };
