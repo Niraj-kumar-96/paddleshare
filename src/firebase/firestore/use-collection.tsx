@@ -34,12 +34,12 @@ export interface UseCollectionResult<T> {
  *
  * @template T Optional type for document data. Defaults to any.
  * @param {string | null | undefined} path - The path to the collection. The hook will not run if the path is null or undefined.
- * @param {QueryConstraint[]} [queryConstraints] - An optional array of query constraints (e.g., from where(), orderBy(), limit()).
+ * @param {...QueryConstraint} queryConstraints - Optional query constraints (e.g., from where(), orderBy(), limit()).
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
 export function useCollection<T = any>(
   path: string | null | undefined,
-  queryConstraints: QueryConstraint[] = []
+  ...queryConstraints: (QueryConstraint | undefined)[]
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
@@ -49,16 +49,21 @@ export function useCollection<T = any>(
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
+  // Filter out any undefined constraints before creating the dependency string
+  const validConstraints = queryConstraints.filter(c => c !== undefined) as QueryConstraint[];
+  const constraintsString = useMemo(() => JSON.stringify(validConstraints), [validConstraints]);
+
+
   // Memoize the query object itself.
   // The query will only be re-created if firestore, path, or the constraints array shallowly change.
-  // JSON.stringify is a simple way to create a stable dependency from the constraints array.
   const memoizedQuery = useMemo(() => {
     if (!firestore || !path) {
       return null;
     }
     const collectionRef = collection(firestore, path);
-    return query(collectionRef, ...queryConstraints);
-  }, [firestore, path, JSON.stringify(queryConstraints)]);
+    // Pass constraints as individual arguments to the query function
+    return query(collectionRef, ...validConstraints);
+  }, [firestore, path, constraintsString]);
 
   useEffect(() => {
     if (!memoizedQuery) {

@@ -53,17 +53,15 @@ export default function WalletPage() {
 
     const { data: rides, isLoading: isLoadingRides } = useCollection<Ride>(
         user ? "rides" : null,
-        user ? [where("driverId", "==", user.uid)] : []
+        user ? where("driverId", "==", user.uid) : undefined
     );
 
     const rideIds = useMemo(() => rides?.map(r => r.id) || [], [rides]);
 
     const { data: bookings, isLoading: isLoadingBookings } = useCollection<Booking>(
         rideIds.length > 0 ? "bookings" : null,
-        rideIds.length > 0 ? [
-                where("rideId", "in", rideIds),
-                where("paymentStatus", "==", "paid")
-            ] : []
+        rideIds.length > 0 ? where("rideId", "in", rideIds) : undefined,
+        rideIds.length > 0 ? where("paymentStatus", "==", "paid") : undefined
     );
 
     const { totalEarnings, totalSeatsSold, paidRides } = useMemo(() => {

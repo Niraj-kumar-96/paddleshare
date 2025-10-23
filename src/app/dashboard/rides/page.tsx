@@ -25,10 +25,8 @@ function RideItem({ ride }: { ride: Ride }) {
     
     const { data: confirmedBookings } = useCollection<Booking>(
         ride.id ? "bookings" : null,
-        [
-            where("rideId", "==", ride.id),
-            where("status", "==", "confirmed")
-        ]
+        where("rideId", "==", ride.id),
+        where("status", "==", "confirmed")
     );
     
     const passengerCount = confirmedBookings?.length || 0;
@@ -166,7 +164,7 @@ export default function RidesPage() {
 
     const { data: driverRides, isLoading: isLoadingRides } = useCollection<Ride>(
         user ? 'rides' : null,
-        user ? [where("driverId", "==", user.uid)] : []
+        user ? where("driverId", "==", user.uid) : undefined
     );
 
     const rideIds = useMemo(() => driverRides?.map(r => r.id) ?? [], [driverRides]);

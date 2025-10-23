@@ -136,7 +136,7 @@ function ManageRidePageContent() {
     
     const { data: bookings, isLoading: isLoadingBookings } = useCollection<Booking>(
         rideId ? 'bookings' : null,
-        [where('rideId', '==', rideId)]
+        where('rideId', '==', rideId)
     );
     
     const pendingBookings = useMemo(() => bookings?.filter(b => b.status === 'pending'), [bookings]);

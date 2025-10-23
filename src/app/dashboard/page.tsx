@@ -16,11 +16,11 @@ export default function DashboardPage() {
 
     const { data: driverRides, isLoading: isLoadingRides } = useCollection<Ride>(
         user ? "rides" : null,
-        user ? [where("driverId", "==", user.uid)] : []
+        user ? where("driverId", "==", user.uid) : undefined
     );
     const { data: passengerBookings, isLoading: isLoadingBookings } = useCollection<Booking>(
         user ? "bookings" : null,
-        user ? [where("passengerId", "==", user.uid)] : []
+        user ? where("passengerId", "==", user.uid) : undefined
     );
 
     const totalEarnings = useMemo(() => {

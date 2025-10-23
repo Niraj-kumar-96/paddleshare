@@ -46,14 +46,9 @@ function OfferRidePageContent() {
     const router = useRouter();
     const { toast } = useToast();
 
-    const vehiclesQuery = useMemo(() => {
-        if (!user) return null;
-        return { path: 'vehicles', constraints: [where('driverId', '==', user.uid)] };
-    }, [user]);
-
     const { data: vehicles, isLoading: isLoadingVehicles } = useCollection<Vehicle>(
-        vehiclesQuery?.path,
-        vehiclesQuery?.constraints
+        user ? 'vehicles' : null,
+        user ? where('driverId', '==', user.uid) : undefined
     );
 
     const form = useForm<z.infer<typeof formSchema>>({

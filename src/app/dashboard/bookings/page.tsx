@@ -200,10 +200,8 @@ export default function BookingsPage() {
     
     const { data: passengerBookings, isLoading } = useCollection<Booking>(
         user ? 'bookings' : null,
-        user ? [
-            where("passengerId", "==", user?.uid ?? ' '), 
-            orderBy("bookingTime", "desc")
-        ] : []
+        user ? where("passengerId", "==", user?.uid ?? ' ') : undefined, 
+        user ? orderBy("bookingTime", "desc") : undefined
     );
 
     return (

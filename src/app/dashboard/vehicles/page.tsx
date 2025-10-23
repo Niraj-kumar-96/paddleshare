@@ -79,7 +79,7 @@ function VehiclesPageContent() {
 
     const { data: vehicles, isLoading } = useCollection<Vehicle>(
         user ? 'vehicles' : null,
-        user ? [where('driverId', '==', user.uid)] : []
+        user ? where('driverId', '==', user.uid) : undefined
     );
 
     const form = useForm<z.infer<typeof formSchema>>({
