@@ -135,7 +135,7 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
                         </div>
                         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground mt-4">
                             <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> {new Date(ride.departureTime).toLocaleTimeString()}</div>
-                            <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> {new Date(ride.departureTime).toLocaleDateString()}</div>
+                            <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> {new Date(ride.departureTime).toLocaleDateDateString()}</div>
                             <div className="flex items-center gap-2"><Users className="h-4 w-4" /> {ride.availableSeats} seats available</div>
                              {isLoadingVehicle ? <Skeleton className="h-5 w-24" /> : vehicle && (
                                 <div className="flex items-center gap-2"><Truck className="h-4 w-4" /> {vehicle.make} {vehicle.model}</div>
@@ -214,20 +214,43 @@ function SearchPageComponent() {
     const [to, setTo] = useState(searchParams.get('to') || '');
     const [date, setDate] = useState(searchParams.get('date') ||'');
 
-    const { data: allRides, isLoading } = useCollection<Ride>(
-        "rides",
-        where("departureTime", ">=", new Date().toISOString())
-    );
+    const queryConstraints = useMemo(() => {
+        const constraints: QueryConstraint[] = [];
+        
+        // Always filter for rides in the future
+        constraints.push(where("departureTime", ">=", new Date().toISOString()));
 
+        // These are not well supported by firestore and often require composite indexes
+        // For this app, we will rely on client side filtering for text search.
+        // if (from) constraints.push(where("origin", ">=", from));
+        // if (to) constraints.push(where("destination", ">=", to));
+
+        if (date) {
+            const startDate = new Date(date);
+            const endDate = new Date(date);
+            endDate.setDate(endDate.getDate() + 1);
+            constraints.push(where("departureTime", ">=", startDate.toISOString()));
+            constraints.push(where("departureTime", "<", endDate.toISOString()));
+        }
+
+        return constraints;
+    }, [date]);
+
+    const { data: rides, isLoading } = useCollection<Ride>(
+        "rides",
+        ...queryConstraints
+    );
+    
+    // Perform client-side filtering for text fields as Firestore is limited here.
     const filteredRides = useMemo(() => {
-        if (!allRides) return [];
-        return allRides.filter(ride => {
+        if (!rides) return [];
+        return rides.filter(ride => {
             const originMatch = from ? ride.origin.toLowerCase().includes(from.toLowerCase()) : true;
             const destinationMatch = to ? ride.destination.toLowerCase().includes(to.toLowerCase()) : true;
-            const dateMatch = date ? new Date(ride.departureTime).toISOString().split('T')[0] === date : true;
-            return originMatch && destinationMatch && dateMatch;
+            return originMatch && destinationMatch;
         });
-    }, [allRides, from, to, date]);
+    }, [rides, from, to]);
+
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -291,5 +314,3 @@ export default function SearchPage() {
     // Wrap with React.Suspense to handle query param reading
     return <React.Suspense><SearchPageComponent /></React.Suspense>
 }
-
-    
