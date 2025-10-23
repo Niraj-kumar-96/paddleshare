@@ -191,11 +191,13 @@ export default function RidesPage() {
             }
 
             for (const chunk of rideIdChunks) {
-                const q = query(collection(firestore, "bookings"), where('rideId', 'in', chunk));
-                const querySnapshot = await getDocs(q);
-                querySnapshot.forEach((doc) => {
-                    allBookings.push({ id: doc.id, ...doc.data() } as Booking);
-                });
+                if (chunk.length > 0) {
+                    const q = query(collection(firestore, "bookings"), where('rideId', 'in', chunk));
+                    const querySnapshot = await getDocs(q);
+                    querySnapshot.forEach((doc) => {
+                        allBookings.push({ id: doc.id, ...doc.data() } as Booking);
+                    });
+                }
             }
             setDriverBookings(allBookings);
             setIsLoadingBookings(false);

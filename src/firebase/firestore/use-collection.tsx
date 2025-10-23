@@ -14,6 +14,7 @@ import {
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useFirestore } from '@/firebase/provider';
+import { useDeepCompareMemo } from '@/hooks/use-deep-compare-memo';
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -39,7 +40,7 @@ export interface UseCollectionResult<T> {
  */
 export function useCollection<T = any>(
   path: string | null | undefined,
-  ...queryConstraints: QueryConstraint[]
+  ...queryConstraints: (QueryConstraint | undefined)[]
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
@@ -49,21 +50,16 @@ export function useCollection<T = any>(
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
+  const stableConstraints = useDeepCompareMemo(() => queryConstraints.filter(c => c !== undefined), [queryConstraints]);
+
   // Memoize the query object itself.
-  // The query will only be re-created if firestore, path, or the constraints array shallowly change.
   const memoizedQuery = useMemo(() => {
     if (!firestore || !path) {
       return null;
     }
     const collectionRef = collection(firestore, path);
-    // Pass constraints as individual arguments to the query function
-    return query(collectionRef, ...queryConstraints);
-    // The dependency on the constraints array is safe because we use the rest parameter syntax.
-    // React guarantees that the `arguments` object is stable if the arguments themselves are.
-    // However, if parent components create new constraint objects on every render, this will still fail.
-    // A more robust solution is to serialize the constraints.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firestore, path, JSON.stringify(queryConstraints)]);
+    return query(collectionRef, ...(stableConstraints as QueryConstraint[]));
+  }, [firestore, path, stableConstraints]);
 
   useEffect(() => {
     if (!memoizedQuery) {
