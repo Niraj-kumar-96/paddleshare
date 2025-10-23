@@ -16,7 +16,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 
 const formSchema = z.object({
     make: z.string().min(1, "Make is required"),
@@ -75,6 +75,7 @@ function VehiclesPageContent() {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const router = useRouter();
 
     const { data: vehicles, isLoading } = useCollection<Vehicle>(
         user ? 'vehicles' : null,
@@ -103,6 +104,7 @@ function VehiclesPageContent() {
                 description: "Your new vehicle has been saved.",
             });
             form.reset();
+            router.push('/offer-ride');
         });
     };
 
