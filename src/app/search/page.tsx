@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowRight, Calendar, Clock, Users, Search, Star, Truck } from "lucide-react";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { useCollection, useUser, useDoc } from "@/firebase";
+import { useCollection, useUser, useDoc, useFirestore } from "@/firebase";
 import { QueryConstraint, where } from "firebase/firestore";
 import { Ride } from "@/types/ride";
 import { User } from "@/types/user";
@@ -290,3 +291,5 @@ export default function SearchPage() {
     // Wrap with React.Suspense to handle query param reading
     return <React.Suspense><SearchPageComponent /></React.Suspense>
 }
+
+    
