@@ -18,10 +18,41 @@ import { useRef, useState, useEffect } from "react";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const formSchema = z.object({
   displayName: z.string().min(1, "Display name is required."),
 });
+
+function ProfileSkeleton() {
+    return (
+        <div>
+            <h1 className="text-3xl font-headline font-bold mb-2">My Profile</h1>
+            <p className="text-muted-foreground mb-8">View and update your personal information.</p>
+            <Card className="max-w-2xl">
+                 <CardHeader>
+                    <CardTitle>Profile Details</CardTitle>
+                    <CardDescription>This information will be displayed on your public profile.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="flex items-center space-x-4">
+                        <Skeleton className="h-20 w-20 rounded-full" />
+                        <Skeleton className="h-10 w-32" />
+                    </div>
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                     <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                    <Skeleton className="h-10 w-32" />
+                </CardContent>
+            </Card>
+        </div>
+    )
+}
 
 
 export default function ProfilePage() {
@@ -111,16 +142,8 @@ export default function ProfilePage() {
         }
     };
 
-    if (isUserLoading) {
-        return (
-            <div className="flex justify-center">
-                <Loader className="animate-spin" />
-            </div>
-        )
-    }
-
-    if (!user) {
-        return <p>Please log in to see your profile.</p>
+    if (isUserLoading || !user) {
+        return <ProfileSkeleton />;
     }
 
     return (

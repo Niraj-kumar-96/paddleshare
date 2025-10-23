@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useDoc, useUser } from "@/firebase";
+import { useDoc, useFirestore, useUser } from "@/firebase";
 import { Booking } from "@/types/booking";
 import { Ride } from "@/types/ride";
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -19,11 +20,44 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { User } from "@/types/user";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const formSchema = z.object({
   rating: z.number().min(1, "Please select a rating.").max(5),
   comment: z.string().min(10, "Comment must be at least 10 characters.").max(500),
 });
+
+function ReviewSkeleton() {
+    return (
+         <div className="container py-12 max-w-2xl mx-auto">
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-7 w-48" />
+                    <Skeleton className="h-4 w-full max-w-sm mt-2" />
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-20" />
+                        <div className="flex gap-2">
+                            <Skeleton className="h-8 w-8" />
+                            <Skeleton className="h-8 w-8" />
+                            <Skeleton className="h-8 w-8" />
+                            <Skeleton className="h-8 w-8" />
+                            <Skeleton className="h-8 w-8" />
+                        </div>
+                    </div>
+                     <div className="space-y-2">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-24 w-full" />
+                    </div>
+                </CardContent>
+                <CardFooter>
+                    <Skeleton className="h-10 w-32" />
+                </CardFooter>
+            </Card>
+        </div>
+    )
+}
 
 function ReviewPageContent() {
     const params = useParams();
@@ -31,6 +65,7 @@ function ReviewPageContent() {
     const { user, isUserLoading } = useUser();
     const router = useRouter();
     const { toast } = useToast();
+    const firestore = useFirestore();
 
     const { data: booking, isLoading: isLoadingBooking } = useDoc<Booking>(bookingId ? `bookings/${bookingId}` : null);
     const { data: ride, isLoading: isLoadingRide } = useDoc<Ride>(booking ? `rides/${booking.rideId}` : null);
@@ -48,9 +83,9 @@ function ReviewPageContent() {
     const rating = form.watch("rating");
 
     const onSubmit = (values: z.infer<typeof formSchema>) => {
-        if (!user || !ride || !booking) return;
+        if (!user || !ride || !booking || !firestore) return;
 
-        addDocumentNonBlocking(collection(getFirestore(), 'reviews'), {
+        addDocumentNonBlocking(collection(firestore, 'reviews'), {
             rideId: ride.id,
             driverId: ride.driverId,
             reviewerId: user.uid,
@@ -66,7 +101,7 @@ function ReviewPageContent() {
     };
     
     if (isLoadingBooking || isLoadingRide || isUserLoading) {
-        return <div>Loading...</div>
+        return <ReviewSkeleton />
     }
 
     if (!booking || !ride || !user) {
