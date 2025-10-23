@@ -135,7 +135,7 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
                         </div>
                         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground mt-4">
                             <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> {new Date(ride.departureTime).toLocaleTimeString()}</div>
-                            <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> {new Date(ride.departureTime).toLocaleDateDateString()}</div>
+                            <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /> {new Date(ride.departureTime).toLocaleDateString()}</div>
                             <div className="flex items-center gap-2"><Users className="h-4 w-4" /> {ride.availableSeats} seats available</div>
                              {isLoadingVehicle ? <Skeleton className="h-5 w-24" /> : vehicle && (
                                 <div className="flex items-center gap-2"><Truck className="h-4 w-4" /> {vehicle.make} {vehicle.model}</div>
