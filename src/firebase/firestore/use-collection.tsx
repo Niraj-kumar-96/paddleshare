@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -14,7 +15,7 @@ import {
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useFirestore } from '@/firebase/provider';
-import { useDeepCompareMemo } from '@/hooks/use-deep-compare-memo';
+import useDeepCompareEffect from '@/hooks/use-deep-compare-effect';
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -50,24 +51,22 @@ export function useCollection<T = any>(
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
-  const stableConstraints = useDeepCompareMemo(() => queryConstraints.filter(c => c !== undefined), [queryConstraints]);
-
-  // Memoize the query object itself.
   const memoizedQuery = useMemo(() => {
     if (!firestore || !path) {
       return null;
     }
+    const validConstraints = queryConstraints.filter(c => c !== undefined) as QueryConstraint[];
     const collectionRef = collection(firestore, path);
-    return query(collectionRef, ...(stableConstraints as QueryConstraint[]));
-  }, [firestore, path, stableConstraints]);
+    return query(collectionRef, ...validConstraints);
+  }, [firestore, path, queryConstraints]);
 
-  useEffect(() => {
+  useDeepCompareEffect(() => {
     if (!memoizedQuery) {
       setIsLoading(false);
       setData(null);
       return;
     }
-    
+
     let isMounted = true;
     setIsLoading(true);
     setError(null);
@@ -102,7 +101,7 @@ export function useCollection<T = any>(
       isMounted = false;
       unsubscribe();
     };
-  }, [memoizedQuery, path]); // Re-run effect if the memoized query changes.
+  }, [memoizedQuery, path]);
 
   return { data, isLoading, error };
 }
