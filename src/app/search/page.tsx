@@ -56,7 +56,7 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
     const firestore = useFirestore();
 
     const { data: driver, isLoading: isLoadingDriver } = useDoc<User>(`users/${ride.driverId}`);
-    const { data: vehicle, isLoading: isLoadingVehicle } = useDoc<Vehicle>(`vehicles/${ride.vehicleId}`);
+    const { data: vehicle, isLoading: isLoadingVehicle } = useDoc<Vehicle>(ride.vehicleId ? `vehicles/${ride.vehicleId}` : null);
 
     const rideImage = PlaceHolderImages[index % 4];
 
@@ -278,7 +278,7 @@ function SearchPageComponent() {
                 )}
                 {!isLoading && filteredRides.length === 0 && (
                      <div className="text-center py-12 border rounded-lg bg-card/10">
-                        <Car className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <Truck className="mx-auto h-12 w-12 text-muted-foreground" />
                         <h3 className="mt-4 text-lg font-medium">No rides found</h3>
                         <p className="mt-2 text-sm text-muted-foreground">Try adjusting your search filters or check back later.</p>
                     </div>
