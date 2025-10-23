@@ -15,7 +15,7 @@ import {
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useFirestore } from '@/firebase/provider';
-import useDeepCompareEffect from '@/hooks/use-deep-compare-effect';
+import { useDeepCompareMemo } from '@/hooks/use-deep-compare-memo';
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -51,16 +51,19 @@ export function useCollection<T = any>(
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
+  const memoizedConstraints = useDeepCompareMemo(() => {
+    return queryConstraints.filter(c => c !== undefined) as QueryConstraint[];
+  }, [queryConstraints]);
+
   const memoizedQuery = useMemo(() => {
     if (!firestore || !path) {
       return null;
     }
-    const validConstraints = queryConstraints.filter(c => c !== undefined) as QueryConstraint[];
     const collectionRef = collection(firestore, path);
-    return query(collectionRef, ...validConstraints);
-  }, [firestore, path, queryConstraints]);
+    return query(collectionRef, ...memoizedConstraints);
+  }, [firestore, path, memoizedConstraints]);
 
-  useDeepCompareEffect(() => {
+  useEffect(() => {
     if (!memoizedQuery) {
       setIsLoading(false);
       setData(null);
