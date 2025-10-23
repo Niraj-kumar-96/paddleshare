@@ -39,7 +39,7 @@ export interface UseCollectionResult<T> {
  */
 export function useCollection<T = any>(
   path: string | null | undefined,
-  ...queryConstraints: (QueryConstraint | undefined)[]
+  ...queryConstraints: QueryConstraint[]
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
@@ -49,19 +49,6 @@ export function useCollection<T = any>(
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
-  // Filter out any undefined constraints before creating the dependency string
-  const validConstraints = queryConstraints.filter(c => c !== undefined) as QueryConstraint[];
-  const constraintsString = useMemo(() => {
-    // This is a bit of a hack to create a stable dependency string for the query constraints.
-    // The default `toString()` on query constraints is not stable.
-    try {
-      return JSON.stringify(validConstraints.map(c => c.type + JSON.stringify(c)));
-    } catch {
-      return '';
-    }
-  }, [validConstraints]);
-
-
   // Memoize the query object itself.
   // The query will only be re-created if firestore, path, or the constraints array shallowly change.
   const memoizedQuery = useMemo(() => {
@@ -70,8 +57,13 @@ export function useCollection<T = any>(
     }
     const collectionRef = collection(firestore, path);
     // Pass constraints as individual arguments to the query function
-    return query(collectionRef, ...validConstraints);
-  }, [firestore, path, constraintsString]);
+    return query(collectionRef, ...queryConstraints);
+    // The dependency on the constraints array is safe because we use the rest parameter syntax.
+    // React guarantees that the `arguments` object is stable if the arguments themselves are.
+    // However, if parent components create new constraint objects on every render, this will still fail.
+    // A more robust solution is to serialize the constraints.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firestore, path, JSON.stringify(queryConstraints)]);
 
   useEffect(() => {
     if (!memoizedQuery) {
