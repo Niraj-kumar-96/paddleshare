@@ -31,7 +31,7 @@ function ChatMessage({ message, sender }: { message: Message, sender?: User | nu
             {!isCurrentUser && (
                 <Avatar className="h-8 w-8">
                     <AvatarImage src={sender?.photoURL ?? ""} />
-                    <AvatarFallback>{sender?.displayName?.charAt(0) ?? 'U'}</AvatarFallback>
+                    <AvatarFallback>{sender?.displayName?.charAt(0) ?? sender?.email?.charAt(0) ?? 'U'}</AvatarFallback>
                 </Avatar>
             )}
             <div className={cn(
@@ -68,7 +68,7 @@ function ChatPageContent() {
 
     const { data: messages, isLoading: isLoadingMessages } = useCollection<Message>(
         bookingId ? `bookings/${bookingId}/messages` : null,
-        'timestamp', 'asc'
+        [orderBy('timestamp', 'asc')]
     );
     
     const isUserInvolved = user?.uid === booking?.passengerId || user?.uid === ride?.driverId;

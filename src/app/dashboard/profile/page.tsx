@@ -14,7 +14,7 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { updateProfile } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -35,10 +35,18 @@ export default function ProfilePage() {
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
-        values: {
-            displayName: user?.displayName ?? "",
+        defaultValues: {
+            displayName: ""
         }
     });
+    
+    useEffect(() => {
+        if(user) {
+            form.reset({
+                displayName: user.displayName ?? ""
+            })
+        }
+    }, [user, form])
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         if (!user) return;
@@ -130,7 +138,7 @@ export default function ProfilePage() {
                             <div className="flex items-center space-x-4">
                                 <Avatar className="h-20 w-20">
                                     <AvatarImage src={user.photoURL ?? ""} alt={user.displayName ?? ""} />
-                                    <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                                    <AvatarFallback>{user.displayName?.charAt(0) ?? user.email?.charAt(0).toUpperCase()}</AvatarFallback>
                                 </Avatar>
                                 <Button variant="outline" type="button" onClick={handlePictureChangeClick} disabled={isUploading}>
                                     {isUploading ? <><Loader className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : 'Change Picture'}

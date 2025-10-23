@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
-import { Timestamp } from "firebase/firestore";
+import { Timestamp, where } from "firebase/firestore";
 
 
 function ReviewCard({ review }: { review: Review }) {
@@ -99,7 +99,7 @@ function ProfilePageContent() {
             <div className="flex flex-col sm:flex-row items-start gap-6 mb-8">
                 <Avatar className="h-24 w-24 text-4xl">
                     <AvatarImage src={user.photoURL ?? ""} />
-                    <AvatarFallback>{user.displayName.charAt(0)}</AvatarFallback>
+                    <AvatarFallback>{user.displayName?.charAt(0) ?? user.email?.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
                     <h1 className="text-3xl font-bold font-headline">{user.displayName}</h1>
