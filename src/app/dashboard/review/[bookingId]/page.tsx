@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useDoc, useFirestore, useUser } from "@/firebase";
@@ -21,6 +20,7 @@ import { cn } from "@/lib/utils";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { User } from "@/types/user";
 import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 
 const formSchema = z.object({
   rating: z.number().min(1, "Please select a rating.").max(5),
@@ -104,12 +104,24 @@ function ReviewPageContent() {
         return <ReviewSkeleton />
     }
 
-    if (!booking || !ride || !user) {
-        return <div>Booking not found.</div>
+    if (!booking || !ride) {
+        return (
+             <div className="container py-12 text-center">
+                <h2 className="text-2xl font-bold">Booking Not Found</h2>
+                <p className="text-muted-foreground mt-2">The booking you are trying to review does not exist.</p>
+                <Button asChild className="mt-4"><Link href="/dashboard/bookings">Go to My Trips</Link></Button>
+            </div>
+        )
     }
 
-    if(booking.passengerId !== user.uid) {
-        return <div>You are not authorized to review this ride.</div>
+    if(booking.passengerId !== user?.uid) {
+        return (
+             <div className="container py-12 text-center">
+                <h2 className="text-2xl font-bold">Unauthorized</h2>
+                <p className="text-muted-foreground mt-2">You are not authorized to review this ride.</p>
+                <Button asChild className="mt-4"><Link href="/dashboard">Go to Dashboard</Link></Button>
+            </div>
+        )
     }
     
     return (

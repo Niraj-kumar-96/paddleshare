@@ -21,6 +21,7 @@ import { format } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const formSchema = z.object({
   origin: z.string().min(1, "Origin is required."),
@@ -33,6 +34,54 @@ const formSchema = z.object({
   fare: z.coerce.number().min(0, "Price must be a positive number."),
   details: z.string().optional(),
 });
+
+function EditRideSkeleton() {
+    return (
+        <Card className="w-full max-w-3xl">
+            <CardHeader>
+                <Skeleton className="h-8 w-48 mx-auto" />
+                <Skeleton className="h-5 w-72 mx-auto mt-2" />
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                </div>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                </div>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                </div>
+                 <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-20 w-full" />
+                </div>
+                <Skeleton className="h-12 w-full" />
+            </CardContent>
+        </Card>
+    );
+}
 
 function EditRidePageContent({ params }: { params: { id: string } }) {
     const firestore = useFirestore();
@@ -96,15 +145,31 @@ function EditRidePageContent({ params }: { params: { id: string } }) {
     };
 
     if (isLoading) {
-        return <div className="flex justify-center"><Loader className="animate-spin" /></div>;
+        return (
+             <div className="container py-12 md:py-24 flex justify-center">
+                <EditRideSkeleton />
+            </div>
+        )
     }
 
     if (!ride) {
-        return <p>Ride not found.</p>;
+        return (
+            <div className="container py-12 text-center">
+                <h2 className="text-2xl font-bold">Ride Not Found</h2>
+                <p className="text-muted-foreground mt-2">The ride you are trying to edit does not exist.</p>
+                <Button asChild className="mt-4"><Link href="/dashboard/rides">Go to My Rides</Link></Button>
+            </div>
+        );
     }
     
     if (ride.driverId !== user?.uid) {
-        return <p>You are not authorized to edit this ride.</p>
+        return (
+            <div className="container py-12 text-center">
+                <h2 className="text-2xl font-bold">Unauthorized</h2>
+                <p className="text-muted-foreground mt-2">You are not authorized to edit this ride.</p>
+                 <Button asChild className="mt-4"><Link href="/dashboard">Go to Dashboard</Link></Button>
+            </div>
+        )
     }
 
 

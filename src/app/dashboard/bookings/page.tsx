@@ -57,15 +57,14 @@ function BookingItem({ booking }: { booking: Booking }) {
 
                 const currentRideData = rideDoc.data() as Ride;
 
-                // Update the booking status to 'cancelled'
-                transaction.update(bookingRef, { status: 'cancelled' });
-                
-                // If the booking was confirmed, we need to add the seats back to the ride.
+                // If the booking was confirmed, add the seats back to the ride.
                 if (booking.status === 'confirmed') {
                     transaction.update(rideRef, {
                         availableSeats: currentRideData.availableSeats + booking.numberOfSeats
                     });
                 }
+                 // Always update the booking status to 'cancelled'
+                transaction.update(bookingRef, { status: 'cancelled' });
             });
 
             toast({
@@ -126,10 +125,12 @@ function BookingItem({ booking }: { booking: Booking }) {
                      {booking.status === 'pending' && !isRidePast && (
                         <>
                             <p className="text-sm text-muted-foreground text-center w-full">Waiting for driver approval...</p>
-                            <Button variant="destructive" className="w-full" onClick={handleCancelBooking}>
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Cancel Request
-                            </Button>
+                            {canCancel &&
+                                <Button variant="destructive" className="w-full" onClick={handleCancelBooking}>
+                                    <XCircle className="mr-2 h-4 w-4" />
+                                    Cancel Request
+                                </Button>
+                            }
                         </>
                      )}
 
@@ -141,10 +142,12 @@ function BookingItem({ booking }: { booking: Booking }) {
                                     Proceed to Payment
                                 </Link>
                             </Button>
-                            <Button variant="destructive" className="w-full" onClick={handleCancelBooking}>
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Cancel Booking
-                            </Button>
+                             {canCancel &&
+                                <Button variant="destructive" className="w-full" onClick={handleCancelBooking}>
+                                    <XCircle className="mr-2 h-4 w-4" />
+                                    Cancel Booking
+                                </Button>
+                            }
                         </div>
                      )}
 
@@ -197,10 +200,10 @@ export default function BookingsPage() {
     
     const { data: passengerBookings, isLoading } = useCollection<Booking>(
         user ? 'bookings' : null,
-        [
+        user ? [
             where("passengerId", "==", user?.uid ?? ' '), 
             orderBy("bookingTime", "desc")
-        ]
+        ] : []
     );
 
     return (

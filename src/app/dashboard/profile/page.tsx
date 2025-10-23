@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useUser, useAuth, useFirestore, useFirebaseApp } from "@/firebase";
@@ -161,7 +160,7 @@ export default function ProfilePage() {
                             <div className="flex items-center space-x-4">
                                 <Avatar className="h-20 w-20">
                                     <AvatarImage src={user.photoURL ?? ""} alt={user.displayName ?? ""} />
-                                    <AvatarFallback>{user.displayName?.charAt(0) ?? user.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                                    <AvatarFallback>{(user.displayName || user.email)?.charAt(0).toUpperCase()}</AvatarFallback>
                                 </Avatar>
                                 <Button variant="outline" type="button" onClick={handlePictureChangeClick} disabled={isUploading}>
                                     {isUploading ? <><Loader className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : 'Change Picture'}
