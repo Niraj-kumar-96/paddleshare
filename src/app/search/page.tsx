@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { ArrowRight, Calendar, Clock, Users, Search, Star, Truck } from "lucide-react";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
-import { query, QueryConstraint, where } from "firebase/firestore";
+import { useCollection, useUser, useDoc } from "@/firebase";
+import { QueryConstraint, where } from "firebase/firestore";
 import { Ride } from "@/types/ride";
 import { User } from "@/types/user";
 import { Review } from "@/types/review";
@@ -97,6 +97,10 @@ function RideCard({ ride, index }: { ride: Ride, index: number }) {
             });
         });
     };
+    
+    if (ride.availableSeats <= 0) {
+        return null;
+    }
 
     return (
         <MotionDiv
@@ -211,15 +215,10 @@ function SearchPageComponent() {
 
     const queryConstraints = useMemo(() => {
         const constraints: QueryConstraint[] = [];
+        // Only fetch rides that are in the future
         constraints.push(where("departureTime", ">=", new Date().toISOString()));
-
-        if (from) {
-            constraints.push(where("origin", ">=", from));
-            constraints.push(where("origin", "<=", from + '\uf8ff'));
-        }
-        
         return constraints;
-    }, [from]);
+    }, []);
 
     const { data: allRides, isLoading } = useCollection<Ride>(
         "rides",
@@ -229,11 +228,12 @@ function SearchPageComponent() {
     const filteredRides = useMemo(() => {
         if (!allRides) return [];
         return allRides.filter(ride => {
+            const originMatch = from ? ride.origin.toLowerCase().includes(from.toLowerCase()) : true;
             const destinationMatch = to ? ride.destination.toLowerCase().includes(to.toLowerCase()) : true;
             const dateMatch = date ? new Date(ride.departureTime).toISOString().split('T')[0] === date : true;
-            return destinationMatch && dateMatch;
+            return originMatch && destinationMatch && dateMatch;
         });
-    }, [allRides, to, date]);
+    }, [allRides, from, to, date]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -297,3 +297,5 @@ export default function SearchPage() {
     // Wrap with React.Suspense to handle query param reading
     return <React.Suspense><SearchPageComponent /></React.Suspense>
 }
+
+    
