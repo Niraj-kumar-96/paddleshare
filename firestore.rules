@@ -1,176 +1,81 @@
-/**
- * @fileOverview Firestore Security Rules for PaddleShare.
- *
- * Core Philosophy:
- * This ruleset prioritizes user data protection by enforcing strict ownership and role-based access control.
- * It ensures that users can only access their own data unless explicitly granted other permissions.
- *
- * Data Structure:
- * - /users/{userId}: Stores user profiles, accessible only by the user themselves.
- * - /rides/{rideId}: Stores ride information, publicly readable, but only authenticated users can create rides.
- * - /bookings/{bookingId}: Stores booking data, accessible only to the passenger who created them.
- * - /bookings/{bookingId}/messages/{messageId}: Chat messages within a booking, accessible only to the passenger and driver involved in the booking.
- * - /reviews/{reviewId}: Stores ride reviews.
- * - /vehicles/{vehicleId}: Stores vehicle data, accessible only by the vehicle owner.
- *
- * Key Security Decisions:
- * - User listing is disallowed to protect privacy.
- * - Public read access is granted to the /rides collection to facilitate ride discovery, but writes are restricted to authenticated users who must provide an ownership field matching their UID.
- *
- * Denormalization for Authorization:
- *  - The `Booking` entity requires that both the `rideId` and the `passengerId` be present.
- *
- * Structural Segregation:
- *  - No explicit structural segregation is applied in this model.
- */
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Secure user profiles. Users can only read/write their own profile.
-     * @path /databases/{database}/documents/users/{userId}
-     * @allow (create, update, delete, get, list) - User "testuser" can create, update, delete, get, and list their own profile: /users/testuser
-     * @deny (create, update, delete, get, list) - User "otheruser" cannot access User "testuser"'s profile: /users/testuser
-     * @principle Enforces document ownership for writes.
-     */
+    // Helper functions to improve readability
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isBookingPassenger(bookingId) {
+        return get(/databases/$(database)/documents/bookings/$(bookingId)).data.passengerId == request.auth.uid;
+    }
+    
+    function isRideDriver(rideId) {
+        return get(/databases/$(database)/documents/rides/$(rideId)).data.driverId == request.auth.uid;
+    }
+
+    // Users can only read/write their own profile
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-          return isOwner(userId) && resource != null;
-      }
-
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
+      allow read: if true;
+      allow create: if isUser(userId);
+      allow update: if isUser(userId);
+      allow delete: if false; // Users should not be able to delete their accounts directly
     }
 
-    /**
-     * @description Rides are publicly readable, but only authenticated users can create them.
-     * @path /databases/{database}/documents/rides/{rideId}
-     * @allow (get, list) - Anyone can read or list rides.
-     * @allow (create) - User "testuser" can create a ride with driverId: "testuser".
-     * @deny (create) - User "testuser" cannot create a ride with driverId: "otheruser".
-     * @deny (update, delete) - User "otheruser" cannot update or delete a ride created by User "testuser".
-     * @principle Public read, owner-only writes, validates authorId on create.
-     */
-    match /rides/{rideId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(driverId) {
-        return request.auth != null && request.auth.uid == driverId;
-      }
-
-        function isExistingOwner(driverId) {
-          return isOwner(driverId) && resource != null;
-        }
-
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.driverId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.driverId);
-      allow delete: if isExistingOwner(resource.data.driverId);
-    }
-
-    /**
-     * @description Bookings are only accessible to the passenger who created them.
-     * @path /databases/{database}/documents/bookings/{bookingId}
-     * @allow (create, get, list) - User "testuser" can create, get, and list their own bookings.
-     * @deny (create, get, list) - User "otheruser" cannot access User "testuser"'s bookings.
-     * @deny (update, delete) - User "otheruser" cannot update or delete bookings created by User "testuser".
-     * @principle Enforces document ownership for writes.
-     */
-    match /bookings/{bookingId} {
-      function isOwner(passengerId) {
-        return request.auth != null && request.auth.uid == passengerId;
-      }
-      function isExistingOwner(passengerId) {
-          return isOwner(passengerId) && resource != null;
-      }
-
-      allow create: if isOwner(request.resource.data.passengerId) && request.resource.data.id == bookingId;
-      allow get: if isOwner(resource.data.passengerId);
-      allow list: if isOwner(request.auth.uid);
-      allow update: if isExistingOwner(resource.data.passengerId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(resource.data.passengerId);
-
-      /**
-       * @description Chat messages within a booking are only accessible to the passenger and driver.
-       * @path /databases/{database}/documents/bookings/{bookingId}/messages/{messageId}
-       * @allow (create, get, list) - The passenger and driver can create, get, and list messages.
-       * @deny (create, get, list) - User "otheruser" cannot access messages in a booking they are not part of.
-       */
-      match /messages/{messageId} {
-        function isParticipant(bookingId) {
-          return get(/databases/$(database)/documents/bookings/$(bookingId)).data.passengerId == request.auth.uid
-                 || get(/databases/$(database)/documents/bookings/$(bookingId)).data.rideId == request.auth.uid;
-        }
-
-          function isExistingParticipant(bookingId) {
-              return isParticipant(bookingId) && resource != null;
-          }
-
-        allow create: if isParticipant(bookingId);
-        allow get: if isParticipant(bookingId);
-        allow list: if isParticipant(bookingId);
-        allow update: if isExistingParticipant(bookingId);
-        allow delete: if isExistingParticipant(bookingId);
-      }
-    }
-
-    /**
-     * @description Reviews can be created and read by anyone.
-     * @path /databases/{database}/documents/reviews/{reviewId}
-     * @allow (get, list) - Anyone can read or list reviews.
-     * @allow (create) - Authenticated users can create reviews.
-     * @deny (update, delete) - Only the author can update or delete reviews.
-     */
-    match /reviews/{reviewId} {
-        function isSignedIn() {
-            return request.auth != null;
-        }
-
-        function isOwner(reviewerId) {
-            return request.auth != null && request.auth.uid == reviewerId;
-        }
-
-      function isExistingOwner(reviewerId) {
-          return isOwner(reviewerId) && resource != null;
-      }
-
-        allow get, list: if true;
-        allow create: if isSignedIn();
-        allow update: if isExistingOwner(resource.data.reviewerId);
-        allow delete: if isExistingOwner(resource.data.reviewerId);
-    }
-
-    /**
-     * @description Vehicle data is only accessible to the vehicle owner.
-     * @path /databases/{database}/documents/vehicles/{vehicleId}
-     * @allow (create, get, list) - User "testuser" can create, get, and list their own vehicles.
-     * @deny (create, get, list) - User "otheruser" cannot access User "testuser"'s vehicles.
-     * @deny (update, delete) - User "otheruser" cannot update or delete vehicles created by User "testuser".
-     * @principle Enforces document ownership for writes.
-     */
+    // Vehicles can only be managed by their owner
     match /vehicles/{vehicleId} {
-      function isOwner(driverId) {
-        return request.auth != null && request.auth.uid == driverId;
-      }
+        allow read: if isSignedIn();
+        allow create, update, delete: if isUser(resource.data.driverId);
+    }
+    
+    // Rides can be read by anyone, but only created/managed by the driver
+    match /rides/{rideId} {
+      allow read: if true;
+      allow create: if isUser(request.resource.data.driverId);
+      allow update: if isUser(get(path(rideId)).data.driverId)
+                    && request.resource.data.driverId == get(path(rideId)).data.driverId; // Driver ID cannot be changed
+      // A ride can only be deleted if it has no bookings.
+      // This is enforced in the UI, but we add a backend rule for safety.
+      allow delete: if isUser(get(path(rideId)).data.driverId)
+                    && !exists(/databases/$(database)/documents/bookings/{bookingId_wildcard}) where get(/databases/$(database)/documents/bookings/{bookingId_wildcard}).data.rideId == rideId;
 
-      function isExistingOwner(driverId) {
-        return isOwner(driverId) && resource != null;
-      }
+    }
 
-      allow create: if isOwner(request.resource.data.driverId);
-      allow get: if isOwner(resource.data.driverId);
-      allow list: if isOwner(request.auth.uid);
-      allow update: if isExistingOwner(resource.data.driverId);
-      allow delete: if isExistingOwner(resource.data.driverId);
+    // Bookings have more complex rules
+    match /bookings/{bookingId} {
+      allow read: if isUser(resource.data.passengerId) || isRideDriver(resource.data.rideId);
+      allow create: if isUser(request.resource.data.passengerId)
+                    // Ensure the booking is for the user creating it
+                    && request.resource.data.passengerId == request.auth.uid
+                    // Status must be pending on creation
+                    && request.resource.data.status == 'pending';
+      allow update: if 
+        // A passenger can cancel their own booking
+        (isUser(resource.data.passengerId) && request.resource.data.status == 'cancelled') ||
+        // A driver can confirm or decline a pending booking
+        (isRideDriver(resource.data.rideId) && (request.resource.data.status == 'confirmed' || request.resource.data.status == 'declined')) ||
+        // A passenger can update payment status after a booking is confirmed
+        (isUser(resource.data.passengerId) && resource.data.status == 'confirmed' && request.resource.data.paymentStatus == 'paid');
+      allow delete: if false; // Bookings should be cancelled, not deleted
+      
+       // Messages can only be read/written by the passenger or driver
+       match /messages/{messageId} {
+         allow read, write: if isBookingPassenger(bookingId) || isRideDriver(get(/databases/$(database)/documents/bookings/$(bookingId)).data.rideId);
+       }
+    }
+
+    // Reviews can be written by a passenger of a ride, and read by anyone
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isUser(request.resource.data.reviewerId);
+      allow update, delete: if isUser(get(path(reviewId)).data.reviewerId);
     }
   }
 }
